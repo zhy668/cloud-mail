@@ -2,7 +2,7 @@ import BizError from '../error/biz-error';
 import accountService from './account-service';
 import orm from '../entity/orm';
 import user from '../entity/user';
-import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, sql, gte, lte } from 'drizzle-orm';
 import { emailConst, isDel, roleConst, userConst } from '../const/entity-const';
 import kvConst from '../const/kv-const';
 import KvConst from '../const/kv-const';
@@ -88,10 +88,59 @@ const userService = {
 	},
 
 	async physicsDelete(c, params) {
-		const { userId } = params
-		await accountService.physicsDeleteByUserIds(c, [userId])
-		await orm(c).delete(user).where(eq(user.userId, userId)).run();
-		await c.env.kv.delete(kvConst.AUTH_INFO + userId);
+		const userId = Number(params && params.userId);
+		if (!userId) {
+			return;
+		}
+		await this.physicsDeleteByIds(c, [userId]);
+	},
+
+	async physicsBatchDelete(c, params = {}) {
+		let { userIds } = params;
+		if (!userIds) {
+			return;
+		}
+		if (typeof userIds === 'string') {
+			userIds = userIds.split(',').map(id => id.trim()).filter(Boolean);
+		}
+		if (!Array.isArray(userIds)) {
+			return;
+		}
+		const idList = userIds.map(id => Number(id)).filter(id => !Number.isNaN(id));
+		if (!idList.length) {
+			return;
+		}
+		await this.physicsDeleteByIds(c, idList);
+	},
+
+	async physicsDeleteByIds(c, userIds) {
+		const uniqueIds = [...new Set(userIds)].filter(id => id);
+		if (!uniqueIds.length) {
+			return;
+		}
+
+		const existUsers = await orm(c)
+			.select({ userId: user.userId, email: user.email })
+			.from(user)
+			.where(inArray(user.userId, uniqueIds))
+			.all();
+
+		if (!existUsers.length) {
+			return;
+		}
+
+		const adminEmail = c.env.admin;
+		const hasAdmin = existUsers.some(row => row.email === adminEmail);
+
+		if (hasAdmin) {
+			throw new BizError(t('cantDelAdmin'));
+		}
+
+		const ids = existUsers.map(row => row.userId);
+
+		await accountService.physicsDeleteByUserIds(c, ids);
+		await orm(c).delete(user).where(inArray(user.userId, ids)).run();
+		await Promise.all(ids.map(id => c.env.kv.delete(kvConst.AUTH_INFO + id)));
 	},
 
 	async list(c, params) {
@@ -108,7 +157,7 @@ const userService = {
 
 		num = (num - 1) * size;
 
-		const conditions = [];
+		const conditions = [sql`1 = 1`];
 
 		if (status > -1) {
 			conditions.push(eq(user.status, status));
@@ -125,6 +174,13 @@ const userService = {
 			conditions.push(eq(user.isDel, params.isDel));
 		}
 
+		if (startTime) {
+			conditions.push(gte(user.createTime, startTime));
+		}
+
+		if (endTime) {
+			conditions.push(lte(user.createTime, endTime));
+		}
 
 		const query = orm(c).select().from(user)
 			.where(and(...conditions));
@@ -357,3 +413,4 @@ const userService = {
 };
 
 export default userService;
+

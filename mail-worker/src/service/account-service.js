@@ -148,6 +148,10 @@ const accountService = {
 			.get();
 	},
 
+	selectByIdIncludeDel(c, accountId) {
+		return orm(c).select().from(account).where(eq(account.accountId, accountId)).get();
+	},
+
 	async insert(c, params) {
 		await orm(c).insert(account).values({ ...params }).returning();
 	},
@@ -189,12 +193,121 @@ const accountService = {
 		await orm(c).update(account).set({isDel: isDel.NORMAL}).where(eq(account.userId, userId)).run();
 	},
 
+	async addByAdmin(c, params) {
+		const { userId, email } = params;
+		const targetUserId = Number(userId);
+
+		if (!email) {
+			throw new BizError(t('emptyEmail'));
+		}
+
+		if (!verifyUtils.isEmail(email)) {
+			throw new BizError(t('notEmail'));
+		}
+
+		const { addEmail, manyEmail } = await settingService.query(c);
+
+		if (!(addEmail === settingConst.addEmail.OPEN && manyEmail === settingConst.manyEmail.OPEN)) {
+			throw new BizError(t('addAccountDisabled'));
+		}
+
+		if (!c.env.domain.includes(emailUtils.getDomain(email))) {
+			throw new BizError(t('notExistDomain'));
+		}
+
+		const userRow = await userService.selectById(c, targetUserId);
+
+		if (!userRow) {
+			throw new BizError(t('notExistUser'));
+		}
+
+		let accountRow = await this.selectByEmailIncludeDel(c, email);
+
+		if (accountRow && accountRow.isDel === isDel.DELETE) {
+			throw new BizError(t('isDelAccount'));
+		}
+
+		if (accountRow) {
+			throw new BizError(t('isRegAccount'));
+		}
+
+		const roleRow = await roleService.selectById(c, userRow.type);
+
+		if (!roleRow) {
+			throw new BizError(t('roleNotExist'));
+		}
+
+		if (userRow.email !== c.env.admin) {
+
+			if (roleRow.accountCount > 0) {
+				const userAccountCount = await this.countUserAccount(c, targetUserId);
+				if (userAccountCount >= roleRow.accountCount) {
+					throw new BizError(t('accountLimit'), 403);
+				}
+			}
+
+			if (!roleService.hasAvailDomainPerm(roleRow.availDomain, email)) {
+				throw new BizError(t('noDomainPermAdd'), 403);
+			}
+		}
+
+		accountRow = await orm(c).insert(account).values({ email, userId: targetUserId, name: emailUtils.getName(email) }).returning().get();
+
+		return accountRow;
+	},
+
+	async deleteByAdmin(c, params) {
+
+		const targetUserId = Number(params && params.userId);
+		const targetAccountId = Number(params && params.accountId);
+
+		if (!targetUserId || !targetAccountId) {
+			return;
+		}
+
+		const userRow = await userService.selectById(c, targetUserId);
+
+		if (!userRow) {
+			throw new BizError(t('notExistUser'));
+		}
+
+		const accountRow = await this.selectByIdIncludeDel(c, targetAccountId);
+
+		if (!accountRow) {
+			return;
+		}
+
+		if (accountRow.userId !== targetUserId) {
+			throw new BizError(t('noUserAccount'));
+		}
+
+		if (accountRow.isDel === isDel.DELETE) {
+			return;
+		}
+
+		if (accountRow.email === userRow.email) {
+			throw new BizError(t('delMyAccount'));
+		}
+
+		await orm(c)
+			.update(account)
+			.set({ isDel: isDel.DELETE })
+			.where(eq(account.accountId, targetAccountId))
+			.run();
+	},
+
 	async setName(c, params, userId) {
-		const { name, accountId } = params
+		const { name, accountId } = params;
+
 		if (name.length > 30) {
 			throw new BizError(t('usernameLengthLimit'));
 		}
-		await orm(c).update(account).set({name}).where(and(eq(account.userId, userId),eq(account.accountId, accountId))).run();
+
+		await orm(c)
+			.update(account)
+			.set({ name })
+			.where(and(eq(account.userId, userId), eq(account.accountId, accountId)))
+			.run();
 	}
 };
 

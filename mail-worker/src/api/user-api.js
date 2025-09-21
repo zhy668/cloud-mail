@@ -1,5 +1,6 @@
-import app from '../hono/hono';
+﻿import app from '../hono/hono';
 import userService from '../service/user-service';
+import accountService from '../service/account-service';
 import result from '../model/result';
 import userContext from '../security/user-context';
 
@@ -40,5 +41,24 @@ app.put('/user/resetSendCount', async (c) => {
 
 app.put('/user/restore', async (c) => {
 	await userService.restore(c, await c.req.json());
+	return c.json(result.ok());
+});
+app.delete('/user/admin/delete', async (c) => {
+	await userService.physicsDelete(c, c.req.query());
+	return c.json(result.ok());
+});
+
+app.delete('/user/admin/batchDelete', async (c) => {
+	await userService.physicsBatchDelete(c, await c.req.json());
+	return c.json(result.ok());
+});
+
+app.post('/user/admin/account/add', async (c) => {
+	const account = await accountService.addByAdmin(c, await c.req.json());
+	return c.json(result.ok(account));
+});
+
+app.delete('/user/admin/account/delete', async (c) => {
+	await accountService.deleteByAdmin(c, c.req.query());
 	return c.json(result.ok());
 });

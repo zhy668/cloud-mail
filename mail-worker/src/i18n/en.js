@@ -62,6 +62,7 @@ const en = {
 	JWTMismatch: 'JWT secret mismatch',
 	publicTokenFail: 'Token validation failed',
 	notAdmin: 'The entered email is not an administrator email',
+	cantDelAdmin: 'Cannot delete administrator account',
 	emailExistDatabase: 'Email already exists in the database',
 	perms: {
 		"邮件": "Email",

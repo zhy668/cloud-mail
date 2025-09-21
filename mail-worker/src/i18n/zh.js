@@ -62,6 +62,7 @@ const zh = {
 	JWTMismatch: 'jwt_secret 不匹配',
 	publicTokenFail: 'token验证失败',
 	notAdmin: '输入的邮箱不是管理员邮箱',
+	cantDelAdmin: '禁止删除管理员账号',
 	emailExistDatabase: '有邮箱已存在数据库中',
 	perms: {
 		"邮件": "邮件",

@@ -62,6 +62,7 @@ const zhTW = {
 	JWTMismatch: 'JWT 密鑰不符',
 	publicTokenFail: 'Token 驗證失敗',
 	notAdmin: '輸入的郵件不是管理員郵件',
+	cantDelAdmin: '禁止刪除管理員帳號',
 	emailExistDatabase: '郵件已存在於資料庫',
 	perms: {
 		"邮件": "郵件",

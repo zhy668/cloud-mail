@@ -1,4 +1,4 @@
-import BizError from '../error/biz-error';
+﻿import BizError from '../error/biz-error';
 import constant from '../const/constant';
 import jwtUtils from '../utils/jwt-utils';
 import KvConst from '../const/kv-const';
@@ -42,7 +42,10 @@ const requirePerms = [
 	'/user/setType',
 	'/user/list',
 	'/user/resetSendCount',
-	'/user/add',
+	'/user/admin/delete',
+	'/user/admin/batchDelete',
+	'/user/admin/account/add',
+	'/user/admin/account/delete',
 	'/regKey/add',
 	'/regKey/list',
 	'/regKey/delete',
@@ -53,9 +56,9 @@ const requirePerms = [
 const premKey = {
 	'email:delete': ['/email/delete'],
 	'email:send': ['/email/send'],
-	'account:add': ['/account/add'],
+	'account:add': ['/account/add','/user/admin/account/add'],
 	'account:query': ['/account/list'],
-	'account:delete': ['/account/delete'],
+	'account:delete': ['/account/delete','/user/admin/account/delete'],
 	'my:delete': ['/my/delete'],
 	'role:add': ['/role/add'],
 	'role:set': ['/role/set','/role/setDefault'],
@@ -67,7 +70,7 @@ const premKey = {
 	'user:set-pwd': ['/user/setPwd'],
 	'user:set-status': ['/user/setStatus'],
 	'user:set-type': ['/user/setType'],
-	'user:delete': ['/user/delete'],
+	'user:delete': ['/user/delete','/user/admin/delete','/user/admin/batchDelete'],
 	'all-email:query': ['/allEmail/list'],
 	'all-email:delete': ['/allEmail/delete','/allEmail/batchDelete'],
 	'setting:query': ['/setting/query'],
@@ -168,3 +171,4 @@ function permKeyToPaths(permKeys) {
 	}
 	return paths;
 }
+

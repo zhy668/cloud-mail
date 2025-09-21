@@ -17,6 +17,19 @@
         <el-option :key="1" :label="$t('banned')" :value="1"/>
         <el-option :key="-2" :label="$t('deleted')" :value="-2"/>
       </el-select>
+      <el-date-picker
+          v-model="registerRange"
+          class="time-range"
+          type="datetimerange"
+          unlink-panels
+          range-separator="-"
+          :start-placeholder="$t('filterStartTime')"
+          :end-placeholder="$t('filterEndTime')"
+          value-format="YYYY-MM-DD HH:mm:ss"
+      />
+      <el-button class="batch-btn" type="danger" size="small" plain :disabled="!canBatchDelete" :loading="batchDeleteLoading" @click="batchDelete">
+        {{ $t('batchDelete') }}
+      </el-button>
       <Icon class="icon" icon="iconoir:search" @click="search" width="20" height="20"/>
       <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-down-outline"
             v-if="params.timeSort === 1" width="28" height="28"/>
@@ -32,14 +45,18 @@
           <loading/>
         </div>
         <el-table
+            ref="tableRef"
             @filter-change="tableFilter"
             :empty-text="first ? '' : null"
             :default-expand-all="expandStatus"
             :data="users"
             :preserve-expanded-content="preserveExpanded"
             style="width: 100%;"
+            :row-key="row => row.userId"
+            @selection-change="handleSelectionChange"
             :key="key"
         >
+          <el-table-column type="selection" width="45"/>
           <el-table-column :width="expandWidth" type="expand">
             <template #default="props">
               <div class="details">
@@ -241,7 +258,7 @@
 </template>
 
 <script setup>
-import {defineOptions, h, reactive, ref, watch} from 'vue'
+import {defineOptions, h, reactive, ref, watch, computed} from 'vue'
 import {
   userList,
   userDelete,
@@ -249,7 +266,9 @@ import {
   userSetStatus,
   userSetType,
   userAdd,
-  userRestSendCount, userRestore
+  userRestSendCount,
+  userRestore,
+  userBatchDelete
 } from '@/request/user.js'
 import {roleSelectUse} from "@/request/role.js";
 import {Icon} from "@iconify/vue";
@@ -289,6 +308,11 @@ const users = ref([])
 const total = ref(0)
 const first = ref(true)
 const scrollbarRef = ref(null)
+const tableRef = ref(null)
+const registerRange = ref([])
+const selectedUsers = ref([])
+const batchDeleteLoading = ref(false)
+const canBatchDelete = computed(() => selectedUsers.value.length > 0)
 
 const domainList = settingStore.domainList
 
@@ -342,6 +366,16 @@ watch(() => params, () => {
   localStorage.setItem('user-params', JSON.stringify(params))
 }, {
   deep: true
+})
+
+watch(registerRange, (val) => {
+  if (val && val.length === 2) {
+    params.startTime = val[0]
+    params.endTime = val[1]
+  } else {
+    params.startTime = ''
+    params.endTime = ''
+  }
 })
 
 watch(() => roleStore.refresh, () => {
@@ -567,6 +601,30 @@ function resetSendCount(user) {
         plain: true
       })
       user.sendCount = 0
+    })
+  });
+}
+
+function batchDelete() {
+  if (!selectedUsers.value.length) {
+    return
+  }
+  ElMessageBox.confirm(t('batchDelUsersConfirm', {count: selectedUsers.value.length}), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(() => {
+    batchDeleteLoading.value = true
+    const ids = selectedUsers.value.map(item => item.userId)
+    userBatchDelete(ids).then(() => {
+      ElMessage({
+        message: t('delSuccessMsg'),
+        type: "success",
+        plain: true
+      })
+      getUserList(false)
+    }).finally(() => {
+      batchDeleteLoading.value = false
     })
   });
 }
@@ -1021,3 +1079,7 @@ function adjustWidth() {
   align-items: start;
 }
 </style>
+
+
+
+

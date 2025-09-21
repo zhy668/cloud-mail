@@ -1,4 +1,4 @@
-import http from '@/axios/index.js'
+﻿import http from '@/axios/index.js'
 
 
 export function userList(params) {
@@ -19,12 +19,25 @@ export function userSetType(params) {
 
 
 export function userDelete(userId) {
-    return http.delete('/user/delete', {params:{userId}})
+    return http.delete('/user/admin/delete', {params:{userId}})
 }
 
 export function userAdd(form) {
     return http.post('/user/add', form)
 }
+
+export function userBatchDelete(userIds) {
+    return http.delete('/user/admin/batchDelete', {data: {userIds}})
+}
+
+export function userAdminAccountAdd(form) {
+    return http.post('/user/admin/account/add', form)
+}
+
+export function userAdminAccountDelete(params) {
+    return http.delete('/user/admin/account/delete', {params})
+}
+
 
 export function userRestSendCount(userId) {
     return http.put('/user/resetSendCount', {userId})
