@@ -26,8 +26,11 @@ export function userAdd(form) {
     return http.post('/user/add', form)
 }
 
-export function userBatchDelete(userIds) {
-    return http.delete('/user/admin/batchDelete', {data: {userIds}})
+export function userBatchDelete(userIds, emails) {
+    const data = {};
+    if (userIds) data.userIds = userIds;
+    if (emails) data.emails = emails;
+    return http.delete('/user/admin/batchDelete', {data})
 }
 
 export function userAdminAccountAdd(form) {

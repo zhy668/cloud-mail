@@ -88,7 +88,16 @@ const userService = {
 	},
 
 	async physicsDelete(c, params) {
-		const userId = Number(params && params.userId);
+		let userId = Number(params && params.userId);
+
+		// 如果没有userId但有email，通过email查找userId
+		if (!userId && params && params.email) {
+			const userRow = await this.selectByEmail(c, params.email);
+			if (userRow) {
+				userId = userRow.userId;
+			}
+		}
+
 		if (!userId) {
 			return;
 		}
@@ -96,21 +105,43 @@ const userService = {
 	},
 
 	async physicsBatchDelete(c, params = {}) {
-		let { userIds } = params;
-		if (!userIds) {
+		let { userIds, emails } = params;
+		let finalUserIds = [];
+
+		// 处理userIds参数
+		if (userIds) {
+			if (typeof userIds === 'string') {
+				userIds = userIds.split(',').map(id => id.trim()).filter(Boolean);
+			}
+			if (Array.isArray(userIds)) {
+				const idList = userIds.map(id => Number(id)).filter(id => !Number.isNaN(id));
+				finalUserIds.push(...idList);
+			}
+		}
+
+		// 处理emails参数
+		if (emails) {
+			if (typeof emails === 'string') {
+				emails = emails.split(',').map(email => email.trim()).filter(Boolean);
+			}
+			if (Array.isArray(emails)) {
+				// 通过email查找对应的userIds
+				for (const email of emails) {
+					const userRow = await this.selectByEmail(c, email);
+					if (userRow) {
+						finalUserIds.push(userRow.userId);
+					}
+				}
+			}
+		}
+
+		// 去重并过滤
+		const uniqueUserIds = [...new Set(finalUserIds)].filter(id => id);
+		if (!uniqueUserIds.length) {
 			return;
 		}
-		if (typeof userIds === 'string') {
-			userIds = userIds.split(',').map(id => id.trim()).filter(Boolean);
-		}
-		if (!Array.isArray(userIds)) {
-			return;
-		}
-		const idList = userIds.map(id => Number(id)).filter(id => !Number.isNaN(id));
-		if (!idList.length) {
-			return;
-		}
-		await this.physicsDeleteByIds(c, idList);
+
+		await this.physicsDeleteByIds(c, uniqueUserIds);
 	},
 
 	async physicsDeleteByIds(c, userIds) {
