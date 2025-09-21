@@ -145,7 +145,7 @@ const userService = {
 
 	async list(c, params) {
 
-		let { num, size, email, timeSort, status } = params;
+		let { num, size, email, timeSort, status, startTime, endTime } = params;
 
 		size = Number(size);
 		num = Number(num);
