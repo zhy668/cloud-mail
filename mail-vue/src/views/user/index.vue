@@ -605,6 +605,10 @@ function resetSendCount(user) {
   });
 }
 
+function handleSelectionChange(selection) {
+  selectedUsers.value = selection
+}
+
 function batchDelete() {
   if (!selectedUsers.value.length) {
     return
@@ -623,6 +627,7 @@ function batchDelete() {
         plain: true
       })
       getUserList(false)
+      selectedUsers.value = [] // 清空选择
     }).finally(() => {
       batchDeleteLoading.value = false
     })
