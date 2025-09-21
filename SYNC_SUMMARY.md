@@ -169,13 +169,33 @@ https://github.com/zhy668/cloud-mail/pull/new/feature/user-management-enhancemen
    - **修复**: 在第148行的解构赋值中添加`startTime, endTime`
    - **影响**: 修复用户列表按时间范围搜索功能
 
+2. **批量删除按钮无法点击** ✅
+   - **文件**: `mail-vue/src/views/user/index.vue`
+   - **问题**: 批量删除按钮始终处于禁用状态，无法点击
+   - **原因**: 缺失`handleSelectionChange`函数处理表格选择事件
+   - **修复**: 添加`handleSelectionChange`函数更新`selectedUsers`状态
+   - **影响**: 修复用户管理页面的批量删除功能
+
 #### 修复前后对比
+
+**startTime未定义修复**:
 ```javascript
 // 修复前
 let { num, size, email, timeSort, status } = params;
 
 // 修复后
 let { num, size, email, timeSort, status, startTime, endTime } = params;
+```
+
+**批量删除功能修复**:
+```javascript
+// 修复前 - 缺失函数
+@selection-change="handleSelectionChange" // 事件绑定存在但函数未定义
+
+// 修复后 - 添加处理函数
+function handleSelectionChange(selection) {
+  selectedUsers.value = selection
+}
 ```
 
 ### 技术栈总结
