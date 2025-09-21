@@ -107,6 +107,20 @@ app.use('*', async (c, next) => {
 		return await next();
 	}
 
+	// 检查删除API是否使用Public Token认证
+	const deleteApiPaths = ['/user/delete', '/user/admin/delete', '/user/admin/batchDelete'];
+	const isDeleteApi = deleteApiPaths.some(apiPath => path.startsWith(apiPath));
+
+	if (isDeleteApi) {
+		const userPublicToken = await c.env.kv.get(KvConst.PUBLIC_KEY);
+		const publicToken = c.req.header(constant.TOKEN_HEADER);
+
+		// 如果提供了有效的Public Token，直接通过
+		if (publicToken && publicToken === userPublicToken) {
+			return await next();
+		}
+		// 如果没有Public Token或无效，继续使用JWT认证流程
+	}
 
 	const jwt = c.req.header(constant.TOKEN_HEADER);
 
