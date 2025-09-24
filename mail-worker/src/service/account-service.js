@@ -43,10 +43,15 @@ const accountService = {
 		let accountRow = await this.selectByEmailIncludeDel(c, email);
 
 		if (accountRow && accountRow.isDel === isDel.DELETE) {
-			// 自动恢复已删除的邮箱
-			await this.restoreByEmail(c, email);
-			accountRow.isDel = isDel.NORMAL;
-			return accountRow;
+			// 只允许原用户恢复自己删除的邮箱
+			if (accountRow.userId === userId) {
+				await this.restoreByEmail(c, email);
+				accountRow.isDel = isDel.NORMAL;
+				return accountRow;
+			} else {
+				// 如果是其他用户删除的邮箱，仍然提示已被注销
+				throw new BizError(t('isDelAccount'));
+			}
 		}
 
 		if (accountRow) {
