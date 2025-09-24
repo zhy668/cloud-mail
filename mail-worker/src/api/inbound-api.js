@@ -142,7 +142,7 @@ async function getValidApiKeys(c) {
 app.post('/inbound', validateInboundIP, validateInboundApiKey, async (c) => {
     try {
         console.log('Received inbound email request');
-        
+
         // Get request body
         const emailMessage = await c.req.json();
         
