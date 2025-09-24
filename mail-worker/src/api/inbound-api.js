@@ -3,16 +3,67 @@ import result from '../model/result';
 import inboundService from '../service/inbound-service';
 import BizError from '../error/biz-error';
 import { t } from '../i18n/i18n';
+import reqUtils from '../utils/req-utils';
 
 /**
  * Inbound email API for receiving emails from smtp2http
  * Endpoint: POST /inbound
- * 
- * Security: Uses API Key authentication
+ *
+ * Security:
+ * - IP whitelist validation
+ * - API Key authentication
  * Expected header: X-Inbound-Key: <api_key>
- * 
+ *
  * Request body: EmailMessage format from smtp2http
  */
+
+// Middleware for IP whitelist validation
+async function validateInboundIP(c, next) {
+    try {
+        const clientIP = reqUtils.getIp(c);
+
+        // Get IP whitelist from environment variables
+        const ipWhitelist = await getInboundIPWhitelist(c);
+
+        if (ipWhitelist.length > 0 && !ipWhitelist.includes(clientIP)) {
+            console.error(`Inbound API access denied for IP: ${clientIP}`);
+            throw new BizError('Access denied: IP not in whitelist', 403);
+        }
+
+        console.log(`Inbound API IP validation passed for: ${clientIP}`);
+        await next();
+    } catch (error) {
+        console.error('Inbound API IP validation failed:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get IP whitelist for inbound API
+ * @param {Object} c - Hono context
+ * @returns {Array} Array of allowed IP addresses
+ */
+async function getInboundIPWhitelist(c) {
+    try {
+        // Try environment variable first
+        const envWhitelist = c.env.INBOUND_IP_WHITELIST;
+        if (envWhitelist) {
+            return envWhitelist.split(',').map(ip => ip.trim()).filter(ip => ip);
+        }
+
+        // Try KV storage as fallback
+        const kvWhitelist = await c.env.kv?.get('INBOUND_IP_WHITELIST');
+        if (kvWhitelist) {
+            return kvWhitelist.split(',').map(ip => ip.trim()).filter(ip => ip);
+        }
+
+        // Return empty array if no whitelist configured (allow all IPs)
+        return [];
+    } catch (error) {
+        console.error('Failed to get IP whitelist:', error);
+        return [];
+    }
+}
 
 // Middleware for API Key authentication
 async function validateInboundApiKey(c, next) {
@@ -88,7 +139,7 @@ async function getValidApiKeys(c) {
  *   "embedded_files": [...]
  * }
  */
-app.post('/inbound', validateInboundApiKey, async (c) => {
+app.post('/inbound', validateInboundIP, validateInboundApiKey, async (c) => {
     try {
         console.log('Received inbound email request');
         
