@@ -169,10 +169,10 @@ app.post('/inbound', validateInboundIP, validateInboundApiKey, async (c) => {
         
         // Return appropriate error response
         if (error instanceof BizError) {
-            return c.json(result.error(error.message), error.code || 500);
+            return c.json(result.fail(error.message, error.code || 500));
         }
-        
-        return c.json(result.error('Internal server error'), 500);
+
+        return c.json(result.fail('Internal server error', 500));
     }
 });
 
