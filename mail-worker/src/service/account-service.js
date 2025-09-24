@@ -43,7 +43,10 @@ const accountService = {
 		let accountRow = await this.selectByEmailIncludeDel(c, email);
 
 		if (accountRow && accountRow.isDel === isDel.DELETE) {
-			throw new BizError(t('isDelAccount'));
+			// 自动恢复已删除的邮箱
+			await this.restoreByEmail(c, email);
+			accountRow.isDel = isDel.NORMAL;
+			return accountRow;
 		}
 
 		if (accountRow) {
