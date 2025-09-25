@@ -26,7 +26,7 @@ const inboundService = {
 
             // Get system settings
             const settings = await settingService.query({ env: c.env });
-            const { receive, r2Domain, noRecipient } = settings;
+            const { receive, r2Domain, noRecipient, domainList } = settings;
 
             // Check if email receiving is enabled
             if (receive === settingConst.receive.CLOSE) {
@@ -36,8 +36,20 @@ const inboundService = {
             // Convert smtp2http format to internal format
             const convertedData = await this.convertEmailMessage(emailMessage);
 
-            // Find recipient account
+            // Validate recipient domain
             const recipientEmail = convertedData.toEmail;
+            const recipientDomain = emailUtils.getDomain(recipientEmail.toLowerCase());
+
+            // Check if recipient domain is in allowed domain list
+            const allowedDomains = domainList.map(domain => domain.replace('@', '').toLowerCase());
+            if (!allowedDomains.includes(recipientDomain)) {
+                console.log(`Inbound email rejected: recipient domain ${recipientDomain} not in allowed list`);
+                throw new BizError(`Recipient domain ${recipientDomain} not allowed`, 403);
+            }
+
+            console.log(`Inbound email domain validation passed for: ${recipientDomain}`);
+
+            // Find recipient account
             const account = await accountService.selectByEmailIncludeDel({ env: c.env }, recipientEmail);
 
             // Check if recipient exists (if required)
