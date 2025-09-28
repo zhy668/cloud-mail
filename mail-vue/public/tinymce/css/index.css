@@ -7,6 +7,15 @@ img {
     height: auto !important;
 }
 
+p {
+    margin: 0 !important;
+}
+
+a {
+    text-decoration: none;
+    color: #0E70DF;
+}
+
 body {
     margin: 10px 8px 0 5px !important;
     font-size: 14px;
