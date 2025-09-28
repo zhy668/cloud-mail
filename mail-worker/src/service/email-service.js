@@ -338,7 +338,7 @@ const emailService = {
 				const emailParams = {
 					apiKey: smtp2goToken,
 					sender: accountRow.email,
-					to: receiveEmail,
+					to: Array.isArray(receiveEmail) ? receiveEmail : [receiveEmail],
 					subject: subject,
 					textBody: text,
 					htmlBody: html,

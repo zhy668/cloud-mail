@@ -45,12 +45,16 @@ const smtp2goService = {
 			throw new BizError(t('noSubject'));
 		}
 
-		// Prepare the request payload
+		// Prepare the request payload according to SMTP2GO API format
 		const payload = {
-			sender,
-			to,
-			subject
+			api_key: apiKey,
+			to: Array.isArray(to) ? to : [to],
+			sender: sender,
+			subject: subject
 		};
+
+		// Log the payload for debugging
+		console.log('SMTP2GO Payload:', JSON.stringify(payload, null, 2));
 
 		// Add optional parameters
 		if (textBody) {
@@ -65,7 +69,7 @@ const smtp2goService = {
 			payload.attachments = attachments;
 		}
 
-		if (headers) {
+		if (headers && Array.isArray(headers)) {
 			payload.custom_headers = headers;
 		}
 
@@ -74,17 +78,20 @@ const smtp2goService = {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'X-Smtp2go-Api-Key': apiKey,
-					'accept': 'application/json'
+					'Accept': 'application/json'
 				},
 				body: JSON.stringify(payload)
 			});
 
 			const result = await response.json();
 
+			// Log the response for debugging
+			console.log('SMTP2GO Response:', JSON.stringify(result, null, 2));
+
 			if (!response.ok) {
 				// Handle API errors
 				const errorMessage = result.data?.error || result.error || `HTTP ${response.status}`;
+				console.error('SMTP2GO API Error:', errorMessage, 'Full response:', result);
 				throw new BizError(`SMTP2GO API Error: ${errorMessage}`);
 			}
 
@@ -92,6 +99,7 @@ const smtp2goService = {
 			if (result.data && result.data.failed > 0) {
 				const failures = result.data.failures || [];
 				const failureMessages = failures.map(f => f.error || 'Unknown error').join(', ');
+				console.error('SMTP2GO Send Failed:', failureMessages, 'Full response:', result);
 				throw new BizError(`SMTP2GO Send Failed: ${failureMessages}`);
 			}
 
