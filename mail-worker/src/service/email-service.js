@@ -311,7 +311,7 @@ const emailService = {
 
 				receiveEmail.forEach(email => {
 					const emailParams = {
-						sender: accountRow.email,
+						sender: `${name} <${accountRow.email}>`,
 						to: [email],
 						subject: subject,
 						textBody: text,
@@ -337,7 +337,7 @@ const emailService = {
 
 				const emailParams = {
 					apiKey: smtp2goToken,
-					sender: accountRow.email,
+					sender: `${name} <${accountRow.email}>`,
 					to: Array.isArray(receiveEmail) ? receiveEmail : [receiveEmail],
 					subject: subject,
 					textBody: text,
