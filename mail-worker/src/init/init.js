@@ -22,6 +22,7 @@ const init = {
 		await this.v1_6DB(c);
 		await this.v1_7DB(c);
 		await this.v2DB(c);
+		await this.v2_1DB(c);
 		await settingService.refresh(c);
 		return c.text(t('initSuccess'));
 	},
@@ -38,6 +39,18 @@ const init = {
 			]);
 		} catch (e) {
 			console.error(e.message)
+		}
+	},
+
+	async v2_1DB(c) {
+		// Add SMTP2GO support fields
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN smtp2go_tokens TEXT NOT NULL DEFAULT '{}';`),
+				c.env.db.prepare(`ALTER TABLE email ADD COLUMN smtp2go_email_id TEXT;`)
+			]);
+		} catch (e) {
+			console.warn(`跳过 SMTP2GO 字段添加，原因：${e.message}`);
 		}
 	},
 

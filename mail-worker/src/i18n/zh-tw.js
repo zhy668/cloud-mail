@@ -23,6 +23,8 @@ const zhTW = {
 	totalSendLack: '總剩餘發送次數不足',
 	senderAccountNotExist: '寄件人郵件不存在',
 	noResendToken: '重發 API Token 未設定',
+	noSmtp2goToken: 'SMTP2GO API Token 未設定',
+	noEmailToken: '郵件服務 API Token 未設定',
 	sendEmailNotCurUser: '寄件人郵件不屬於目前用戶',
 	notExistEmailReply: '郵件不存在，無法回覆',
 	pwdLengthLimit: '密碼長度超出限制',

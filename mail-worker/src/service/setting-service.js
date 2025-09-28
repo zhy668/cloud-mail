@@ -17,6 +17,7 @@ const settingService = {
 	async refresh(c) {
 		const settingRow = await orm(c).select().from(setting).get();
 		settingRow.resendTokens = JSON.parse(settingRow.resendTokens);
+		settingRow.smtp2goTokens = JSON.parse(settingRow.smtp2goTokens || '{}');
 		c.set('setting', settingRow);
 		await c.env.kv.put(KvConst.SETTING, JSON.stringify(settingRow));
 	},
@@ -67,6 +68,10 @@ const settingService = {
 			settingRow.resendTokens[key] = `${settingRow.resendTokens[key].slice(0, 12)}******`;
 		});
 
+		Object.keys(settingRow.smtp2goTokens).forEach(key => {
+			settingRow.smtp2goTokens[key] = `${settingRow.smtp2goTokens[key].slice(0, 12)}******`;
+		});
+
 		settingRow.s3AccessKey = settingRow.s3AccessKey ? `${settingRow.s3AccessKey.slice(0, 12)}******` : null;
 		settingRow.s3SecretKey = settingRow.s3SecretKey ? `${settingRow.s3SecretKey.slice(0, 12)}******` : null;
 		settingRow.hasR2 = !!c.env.r2
@@ -91,11 +96,25 @@ const settingService = {
 
 	async set(c, params) {
 		const settingData = await this.query(c);
-		let resendTokens = { ...settingData.resendTokens, ...params.resendTokens };
-		Object.keys(resendTokens).forEach(domain => {
-			if (!resendTokens[domain]) delete resendTokens[domain];
-		});
-		params.resendTokens = JSON.stringify(resendTokens);
+
+		// Handle resendTokens
+		if (params.resendTokens) {
+			let resendTokens = { ...settingData.resendTokens, ...params.resendTokens };
+			Object.keys(resendTokens).forEach(domain => {
+				if (!resendTokens[domain]) delete resendTokens[domain];
+			});
+			params.resendTokens = JSON.stringify(resendTokens);
+		}
+
+		// Handle smtp2goTokens
+		if (params.smtp2goTokens) {
+			let smtp2goTokens = { ...settingData.smtp2goTokens, ...params.smtp2goTokens };
+			Object.keys(smtp2goTokens).forEach(domain => {
+				if (!smtp2goTokens[domain]) delete smtp2goTokens[domain];
+			});
+			params.smtp2goTokens = JSON.stringify(smtp2goTokens);
+		}
+
 		await orm(c).update(setting).set({ ...params }).returning().get();
 		await this.refresh(c);
 	},

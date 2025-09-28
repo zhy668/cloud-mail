@@ -180,6 +180,19 @@
                   </el-button>
                 </div>
               </div>
+              <div class="setting-item">
+                <div><span>{{ $t('smtp2goToken') }}</span></div>
+                <div>
+                  <el-button class="opt-button" style="margin-top: 0" @click="openSmtp2goList" size="small"
+                             type="primary">
+                    <Icon icon="ic:round-list" width="18" height="18"/>
+                  </el-button>
+                  <el-button class="opt-button" style="margin-top: 0" @click="openSmtp2goForm" size="small"
+                             type="primary">
+                    <Icon icon="material-symbols:add-rounded" width="16" height="16"/>
+                  </el-button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -401,6 +414,20 @@
           <el-button type="primary" :loading="settingLoading" @click="saveResendToken">{{ $t('save') }}</el-button>
         </form>
       </el-dialog>
+      <el-dialog v-model="smtp2goTokenFormShow" :title="$t('smtp2goToken')" width="340" @closed="cleanSmtp2goTokenForm">
+        <form>
+          <el-select style="margin-bottom: 15px" v-model="smtp2goTokenForm.domain" placeholder="Select">
+            <el-option
+                v-for="item in settingStore.domainList"
+                :key="item"
+                :label="item"
+                :value="item"
+            />
+          </el-select>
+          <el-input type="text" :placeholder="$t('addSmtp2goTokenDesc')" v-model="smtp2goTokenForm.token"/>
+          <el-button type="primary" :loading="settingLoading" @click="saveSmtp2goToken">{{ $t('save') }}</el-button>
+        </form>
+      </el-dialog>
       <el-dialog v-model="r2DomainShow" :title="$t('addOsDomain')" width="340"
                  @closed="r2DomainInput = setting.r2Domain">
         <form>
@@ -539,6 +566,28 @@
                            :show-overflow-tooltip="true"/>
           <el-table-column :width="tokenColumnWidth" property="value" label="Token" fixed="right"
                            :show-overflow-tooltip="true"/>
+          <el-table-column label="操作" width="80" fixed="right">
+            <template #default="scope">
+              <el-button size="small" type="danger" @click="deleteResendToken(scope.row.key)">
+                <Icon icon="material-symbols:delete-outline" width="16" height="16"/>
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-dialog>
+      <el-dialog class="smtp2go-table" v-model="showSmtp2goList" :title="$t('smtp2goTokenList')">
+        <el-table :data="smtp2goList">
+          <el-table-column :min-width="emailColumnWidth" property="key" :label="$t('domain')"
+                           :show-overflow-tooltip="true"/>
+          <el-table-column :width="tokenColumnWidth" property="value" label="Token" fixed="right"
+                           :show-overflow-tooltip="true"/>
+          <el-table-column label="操作" width="80" fixed="right">
+            <template #default="scope">
+              <el-button size="small" type="danger" @click="deleteSmtp2goToken(scope.row.key)">
+                <Icon icon="material-symbols:delete-outline" width="16" height="16"/>
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-dialog>
       <el-dialog v-model="regVerifyCountShow" :title="$t('rulesVerifyTitle',{count: regVerifyCount})"
@@ -680,6 +729,7 @@ const accountStore = useAccountStore();
 const userStore = useUserStore();
 const editTitleShow = ref(false)
 const resendTokenFormShow = ref(false)
+const smtp2goTokenFormShow = ref(false)
 const r2DomainShow = ref(false)
 const turnstileShow = ref(false)
 const tgSettingShow = ref(false)
@@ -687,6 +737,7 @@ const noticePopupShow = ref(false)
 const thirdEmailShow = ref(false)
 const forwardRulesShow = ref(false)
 const showResendList = ref(false)
+const showSmtp2goList = ref(false)
 const settingStore = useSettingStore();
 const uiStore = useUiStore();
 const {settings: setting} = storeToRefs(settingStore);
@@ -705,6 +756,10 @@ const addS3Show = ref(false)
 const addVerifyCountShow = ref(false)
 const regVerifyCountShow = ref(false)
 const resendTokenForm = reactive({
+  domain: '',
+  token: '',
+})
+const smtp2goTokenForm = reactive({
   domain: '',
   token: '',
 })
@@ -766,6 +821,7 @@ function getSettings() {
     setting.value = settingData
     settingStore.domainList = settingData.domainList;
     resendTokenForm.domain = setting.value.domainList[0]
+    smtp2goTokenForm.domain = setting.value.domainList[0]
     loginOpacity.value = setting.value.loginOpacity
     firstLoading.value = false
     backgroundUrl.value = setting.value.background?.startsWith('http') ? setting.value.background : ''
@@ -807,6 +863,28 @@ const resendList = computed(() => {
     return {
       key: key,
       value: setting.value.resendTokens[key]
+    };
+  })
+
+  if (list.length > 0) {
+
+    const key = list.reduce((a, b) => compareByLengthAndUpperCase(a, b, 'key')).key;
+    emailColumnWidth.value = getTextWidth(key) + 30;
+
+    const value = list.reduce((a, b) => compareByLengthAndUpperCase(a, b, 'value')).value;
+    tokenColumnWidth.value = getTextWidth(value) + 30;
+
+  }
+
+  return list;
+});
+
+const smtp2goList = computed(() => {
+
+  let list = Object.keys(setting.value.smtp2goTokens || {}).map(key => {
+    return {
+      key: key,
+      value: setting.value.smtp2goTokens[key]
     };
   })
 
@@ -1142,9 +1220,27 @@ function saveResendToken() {
   editSetting(settingForm)
 }
 
+function openSmtp2goForm() {
+  smtp2goTokenFormShow.value = true
+}
+
+function saveSmtp2goToken() {
+  const settingForm = {
+    smtp2goTokens: {}
+  }
+  const domain = smtp2goTokenForm.domain.slice(1)
+  settingForm.smtp2goTokens[domain] = smtp2goTokenForm.token
+  editSetting(settingForm)
+}
+
+function openSmtp2goList() {
+  showSmtp2goList.value = true
+}
+
 function backupSetting() {
   const settingForm = {...setting.value}
   delete settingForm.resendTokens
+  delete settingForm.smtp2goTokens
   delete settingForm.siteKey
   delete settingForm.secretKey
   backup = JSON.stringify(setting.value)
@@ -1152,6 +1248,50 @@ function backupSetting() {
 
 function cleanResendTokenForm() {
   resendTokenForm.token = ''
+}
+
+function cleanSmtp2goTokenForm() {
+  smtp2goTokenForm.token = ''
+}
+
+function deleteResendToken(domain) {
+  ElMessageBox.confirm(
+    `确定要删除域名 ${domain} 的 Resend Token 吗？`,
+    '删除确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(() => {
+    const settingForm = {
+      resendTokens: {}
+    }
+    settingForm.resendTokens[domain] = '' // 设置为空字符串来删除
+    editSetting(settingForm)
+  }).catch(() => {
+    // 用户取消删除
+  })
+}
+
+function deleteSmtp2goToken(domain) {
+  ElMessageBox.confirm(
+    `确定要删除域名 ${domain} 的 SMTP2GO Token 吗？`,
+    '删除确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(() => {
+    const settingForm = {
+      smtp2goTokens: {}
+    }
+    settingForm.smtp2goTokens[domain] = '' // 设置为空字符串来删除
+    editSetting(settingForm)
+  }).catch(() => {
+    // 用户取消删除
+  })
 }
 
 function beforeChange() {
@@ -1167,6 +1307,7 @@ function change(e) {
   delete settingForm.s3AccessKey
   delete settingForm.s3SecretKey
   delete settingForm.resendTokens
+  delete settingForm.smtp2goTokens
   editSetting(settingForm, false)
 }
 
@@ -1201,6 +1342,7 @@ function editSetting(settingForm, refreshStatus = true) {
     editTitleShow.value = false
     r2DomainShow.value = false
     resendTokenFormShow.value = false
+    smtp2goTokenFormShow.value = false
     turnstileShow.value = false
     tgSettingShow.value = false
     thirdEmailShow.value = false

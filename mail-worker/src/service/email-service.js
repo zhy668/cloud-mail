@@ -8,6 +8,7 @@ import accountService from './account-service';
 import BizError from '../error/biz-error';
 import emailUtils from '../utils/email-utils';
 import { Resend } from 'resend';
+import smtp2goService from './smtp2go-service';
 import attService from './att-service';
 import { parseHTML } from 'linkedom';
 import userService from './user-service';
@@ -143,7 +144,7 @@ const emailService = {
 			attachments
 		} = params;
 
-		const { resendTokens, r2Domain, send } = await settingService.query(c);
+		const { resendTokens, smtp2goTokens, r2Domain, send } = await settingService.query(c);
 
 		let { attDataList, html } = await attService.toImageUrlHtml(c, content, r2Domain);
 
@@ -214,9 +215,19 @@ const emailService = {
 
 		const domain = emailUtils.getDomain(accountRow.email);
 		const resendToken = resendTokens[domain];
+		const smtp2goToken = smtp2goTokens[domain];
 
-		if (!resendToken) {
-			throw new BizError(t('noResendToken'));
+		// Determine which email service to use
+		// Priority: Resend first, then SMTP2GO
+		let useResend = false;
+		let useSmtp2go = false;
+
+		if (resendToken) {
+			useResend = true;
+		} else if (smtp2goToken) {
+			useSmtp2go = true;
+		} else {
+			throw new BizError(t('noEmailToken'));
 		}
 
 
@@ -238,21 +249,46 @@ const emailService = {
 
 		}
 
-		let resendResult = null;
+		let emailResult = null;
 
-		const resend = new Resend(resendToken);
+		if (useResend) {
+			// Use Resend service
+			const resend = new Resend(resendToken);
 
-		if (manyType === 'divide') {
+			if (manyType === 'divide') {
 
-			let sendFormList = [];
+				let sendFormList = [];
 
-			receiveEmail.forEach(email => {
+				receiveEmail.forEach(email => {
+					const sendForm = {
+						from: `${name} <${accountRow.email}>`,
+						to: [email],
+						subject: subject,
+						text: text,
+						html: html
+					};
+
+					if (sendType === 'reply') {
+						sendForm.headers = {
+							'in-reply-to': emailRow.messageId,
+							'references': emailRow.messageId
+						};
+					}
+
+					sendFormList.push(sendForm);
+				});
+
+				emailResult = await resend.batch.send(sendFormList);
+
+			} else {
+
 				const sendForm = {
 					from: `${name} <${accountRow.email}>`,
-					to: [email],
+					to: [...receiveEmail],
 					subject: subject,
 					text: text,
-					html: html
+					html: html,
+					attachments: attachments
 				};
 
 				if (sendType === 'reply') {
@@ -262,38 +298,95 @@ const emailService = {
 					};
 				}
 
-				sendFormList.push(sendForm);
-			});
+				emailResult = await resend.emails.send(sendForm);
 
-			resendResult = await resend.batch.send(sendFormList);
-
-		} else {
-
-			const sendForm = {
-				from: `${name} <${accountRow.email}>`,
-				to: [...receiveEmail],
-				subject: subject,
-				text: text,
-				html: html,
-				attachments: attachments
-			};
-
-			if (sendType === 'reply') {
-				sendForm.headers = {
-					'in-reply-to': emailRow.messageId,
-					'references': emailRow.messageId
-				};
 			}
 
-			resendResult = await resend.emails.send(sendForm);
+		} else if (useSmtp2go) {
+			// Use SMTP2GO service
 
+			if (manyType === 'divide') {
+
+				let emailList = [];
+
+				receiveEmail.forEach(email => {
+					const emailParams = {
+						sender: accountRow.email,
+						to: [email],
+						subject: subject,
+						textBody: text,
+						htmlBody: html
+					};
+
+					if (sendType === 'reply') {
+						emailParams.headers = [
+							{ header: 'In-Reply-To', value: emailRow.messageId },
+							{ header: 'References', value: emailRow.messageId }
+						];
+					}
+
+					emailList.push(emailParams);
+				});
+
+				emailResult = await smtp2goService.sendBatch(c, {
+					apiKey: smtp2goToken,
+					emails: emailList
+				});
+
+			} else {
+
+				const emailParams = {
+					apiKey: smtp2goToken,
+					sender: accountRow.email,
+					to: receiveEmail,
+					subject: subject,
+					textBody: text,
+					htmlBody: html,
+					attachments: attachments
+				};
+
+				if (sendType === 'reply') {
+					emailParams.headers = [
+						{ header: 'In-Reply-To', value: emailRow.messageId },
+						{ header: 'References', value: emailRow.messageId }
+					];
+				}
+
+				emailResult = await smtp2goService.send(c, emailParams);
+
+			}
 		}
 
-		const { data, error } = resendResult;
+		// Handle different response formats
+		let emailIds = [];
 
+		if (useResend) {
+			const { data, error } = emailResult;
 
-		if (error) {
-			throw new BizError(error.message);
+			if (error) {
+				throw new BizError(error.message);
+			}
+
+			if (manyType === 'divide') {
+				emailIds = data.data.map(item => item.id);
+			} else {
+				emailIds = [data.id];
+			}
+
+		} else if (useSmtp2go) {
+
+			if (manyType === 'divide') {
+				if (emailResult.failed > 0) {
+					const errorMessages = emailResult.errors.map(e => e.error).join(', ');
+					throw new BizError(`SMTP2GO Batch Send Failed: ${errorMessages}`);
+				}
+				emailIds = emailResult.results.map(result => result.data.email_id);
+			} else {
+				if (!emailResult.data || !emailResult.data.email_id) {
+					throw new BizError('SMTP2GO Send Failed: No email ID returned');
+				}
+				emailIds = [emailResult.data.email_id];
+			}
 		}
 
 		html = this.imgReplace(html, null, r2Domain);
@@ -315,14 +408,24 @@ const emailService = {
 
 			receiveEmail.forEach((item, index) => {
 				const emailDataItem = { ...emailData };
-				emailDataItem.resendEmailId = data.data[index].id;
+				// Store email ID from either service
+				if (useResend) {
+					emailDataItem.resendEmailId = emailIds[index];
+				} else if (useSmtp2go) {
+					emailDataItem.smtp2goEmailId = emailIds[index];
+				}
 				emailDataItem.recipient = JSON.stringify([{ address: item, name: '' }]);
 				emailDataList.push(emailDataItem);
 			});
 
 		} else {
 
-			emailData.resendEmailId = data.id;
+			// Store email ID from either service
+			if (useResend) {
+				emailData.resendEmailId = emailIds[0];
+			} else if (useSmtp2go) {
+				emailData.smtp2goEmailId = emailIds[0];
+			}
 
 			const recipient = [];
 

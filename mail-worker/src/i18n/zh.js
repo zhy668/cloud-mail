@@ -23,6 +23,8 @@ const zh = {
 	totalSendLack: '剩余发送次数不足',
 	senderAccountNotExist: '发件人邮箱不存在',
 	noResendToken: 'resend密钥未配置',
+	noSmtp2goToken: 'SMTP2GO密钥未配置',
+	noEmailToken: '邮件服务密钥未配置',
 	sendEmailNotCurUser: '发件人邮箱非当前用户所有',
 	notExistEmailReply: '邮件不存在无法回复',
 	pwdLengthLimit: '密码长度超出限制',

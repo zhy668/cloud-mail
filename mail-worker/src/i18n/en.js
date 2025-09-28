@@ -23,6 +23,8 @@ const en = {
 	totalSendLack: 'Not enough total remaining sends',
 	senderAccountNotExist: 'Sender email does not exist',
 	noResendToken: 'Resend API token not configured',
+	noSmtp2goToken: 'SMTP2GO API token not configured',
+	noEmailToken: 'Email service API token not configured',
 	sendEmailNotCurUser: 'Sender email does not belong to current user',
 	notExistEmailReply: 'Mail does not exist and cannot be replied to',
 	pwdLengthLimit: 'Password length exceeds the limit',
