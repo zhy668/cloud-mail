@@ -47,9 +47,8 @@ const smtp2goService = {
 
 		// Prepare the request payload according to SMTP2GO API format
 		const payload = {
-			api_key: apiKey,
-			to: Array.isArray(to) ? to : [to],
 			sender: sender,
+			to: Array.isArray(to) ? to : [to],
 			subject: subject
 		};
 
@@ -78,6 +77,7 @@ const smtp2goService = {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
+					'X-Smtp2go-Api-Key': apiKey,
 					'Accept': 'application/json'
 				},
 				body: JSON.stringify(payload)
@@ -95,12 +95,18 @@ const smtp2goService = {
 				throw new BizError(`SMTP2GO API Error: ${errorMessage}`);
 			}
 
-			// Check if the email was successfully sent
+			// Check if the email was successfully sent according to SMTP2GO response format
 			if (result.data && result.data.failed > 0) {
 				const failures = result.data.failures || [];
 				const failureMessages = failures.map(f => f.error || 'Unknown error').join(', ');
 				console.error('SMTP2GO Send Failed:', failureMessages, 'Full response:', result);
 				throw new BizError(`SMTP2GO Send Failed: ${failureMessages}`);
+			}
+
+			// Validate that we have a successful response with email_id
+			if (!result.data || !result.data.email_id) {
+				console.error('SMTP2GO Invalid Response: Missing email_id', result);
+				throw new BizError('SMTP2GO Send Failed: Invalid response format');
 			}
 
 			return result;
