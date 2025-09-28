@@ -58,9 +58,20 @@ const smtp2goService = {
 		console.log('SMTP2GO Request Details:');
 		console.log('- API Key:', apiKey ? `${apiKey.substring(0, 10)}...` : 'MISSING');
 		console.log('- Sender:', sender);
+		console.log('- Sender Domain:', sender.split('@')[1]);
 		console.log('- Recipients:', Array.isArray(to) ? to : [to]);
 		console.log('- Subject:', subject);
 		console.log('- Payload:', JSON.stringify(payload, null, 2));
+
+		// Validate sender domain
+		const senderDomain = sender.split('@')[1];
+		console.log('⚠️  IMPORTANT: Ensure domain', senderDomain, 'is verified in your SMTP2GO account');
+
+		// Check if this might be a domain verification issue
+		if (!senderDomain || senderDomain.includes('abrdns.com')) {
+			console.warn('🚨 POTENTIAL ISSUE: Using abrdns.com subdomain. This domain must be verified in SMTP2GO.');
+			console.warn('📋 SOLUTION: Add and verify', senderDomain, 'in your SMTP2GO account settings.');
+		}
 
 		// Add optional parameters
 		if (textBody) {
@@ -120,6 +131,11 @@ const smtp2goService = {
 				console.error('SMTP2GO Invalid Response: Missing email_id', result);
 				throw new BizError('SMTP2GO Send Failed: Invalid response format');
 			}
+
+			// Log success but warn about potential delivery issues
+			console.log('✅ SMTP2GO API Success - Email ID:', result.data.email_id);
+			console.log('📧 Email queued for delivery. Check SMTP2GO dashboard for delivery status.');
+			console.log('⚠️  If bounces occur, verify sender domain is properly configured in SMTP2GO.');
 
 			return result;
 
