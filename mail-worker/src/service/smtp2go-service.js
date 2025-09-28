@@ -45,13 +45,20 @@ const smtp2goService = {
 			throw new BizError(t('noSubject'));
 		}
 
+		// Validate and improve subject to avoid content filtering
+		let validatedSubject = subject;
+		if (!validatedSubject || validatedSubject.trim().length < 3) {
+			validatedSubject = 'Message from ' + (sender.split('@')[0] || 'cloud-mail');
+			console.warn('⚠️ Subject too short, using default:', validatedSubject);
+		}
+
 		// Prepare the request payload according to SMTP2GO API format
 		// According to docs: API Key can be in header OR body, let's try body approach
 		const payload = {
 			api_key: apiKey,
 			sender: sender,
 			to: Array.isArray(to) ? to : [to],
-			subject: subject
+			subject: validatedSubject
 		};
 
 		// Log the payload for debugging
@@ -73,21 +80,51 @@ const smtp2goService = {
 			console.warn('📋 SOLUTION: Add and verify', senderDomain, 'in your SMTP2GO account settings.');
 		}
 
-		// Add optional parameters
-		if (textBody) {
-			payload.text_body = textBody;
+		// Add optional parameters with content validation
+		if (textBody && textBody.trim()) {
+			payload.text_body = textBody.trim();
+		} else {
+			// Provide default text body if empty to avoid content filtering
+			payload.text_body = subject || 'Email sent via cloud-mail system';
 		}
 
-		if (htmlBody) {
-			payload.html_body = htmlBody;
+		if (htmlBody && htmlBody.trim()) {
+			payload.html_body = htmlBody.trim();
+		} else if (payload.text_body) {
+			// Generate basic HTML from text if HTML is missing
+			payload.html_body = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${subject || 'Email'}</title>
+</head>
+<body>
+    <p>${payload.text_body.replace(/\n/g, '<br>')}</p>
+</body>
+</html>`;
 		}
 
 		if (attachments && attachments.length > 0) {
 			payload.attachments = attachments;
 		}
 
+		// Add custom headers for better deliverability
+		const customHeaders = [];
+
+		// Add user-provided headers
 		if (headers && Array.isArray(headers)) {
-			payload.custom_headers = headers;
+			customHeaders.push(...headers);
+		}
+
+		// Add standard headers to improve deliverability
+		customHeaders.push(
+			{ header: 'X-Mailer', value: 'cloud-mail-system' },
+			{ header: 'X-Priority', value: '3' },
+			{ header: 'Message-ID', value: `<${Date.now()}.${Math.random().toString(36).substr(2, 9)}@${sender.split('@')[1]}>` }
+		);
+
+		if (customHeaders.length > 0) {
+			payload.custom_headers = customHeaders;
 		}
 
 		try {
