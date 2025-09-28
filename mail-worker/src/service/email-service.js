@@ -408,24 +408,16 @@ const emailService = {
 
 			receiveEmail.forEach((item, index) => {
 				const emailDataItem = { ...emailData };
-				// Store email ID from either service
-				if (useResend) {
-					emailDataItem.resendEmailId = emailIds[index];
-				} else if (useSmtp2go) {
-					emailDataItem.smtp2goEmailId = emailIds[index];
-				}
+				// Store email ID - use resendEmailId field for both services to maintain compatibility
+				emailDataItem.resendEmailId = emailIds[index];
 				emailDataItem.recipient = JSON.stringify([{ address: item, name: '' }]);
 				emailDataList.push(emailDataItem);
 			});
 
 		} else {
 
-			// Store email ID from either service
-			if (useResend) {
-				emailData.resendEmailId = emailIds[0];
-			} else if (useSmtp2go) {
-				emailData.smtp2goEmailId = emailIds[0];
-			}
+			// Store email ID - use resendEmailId field for both services to maintain compatibility
+			emailData.resendEmailId = emailIds[0];
 
 			const recipient = [];
 
