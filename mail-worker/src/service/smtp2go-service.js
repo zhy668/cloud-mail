@@ -46,14 +46,21 @@ const smtp2goService = {
 		}
 
 		// Prepare the request payload according to SMTP2GO API format
+		// According to docs: API Key can be in header OR body, let's try body approach
 		const payload = {
+			api_key: apiKey,
 			sender: sender,
 			to: Array.isArray(to) ? to : [to],
 			subject: subject
 		};
 
 		// Log the payload for debugging
-		console.log('SMTP2GO Payload:', JSON.stringify(payload, null, 2));
+		console.log('SMTP2GO Request Details:');
+		console.log('- API Key:', apiKey ? `${apiKey.substring(0, 10)}...` : 'MISSING');
+		console.log('- Sender:', sender);
+		console.log('- Recipients:', Array.isArray(to) ? to : [to]);
+		console.log('- Subject:', subject);
+		console.log('- Payload:', JSON.stringify(payload, null, 2));
 
 		// Add optional parameters
 		if (textBody) {
@@ -77,7 +84,6 @@ const smtp2goService = {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'X-Smtp2go-Api-Key': apiKey,
 					'Accept': 'application/json'
 				},
 				body: JSON.stringify(payload)
@@ -86,13 +92,19 @@ const smtp2goService = {
 			const result = await response.json();
 
 			// Log the response for debugging
+			console.log('SMTP2GO Response Status:', response.status);
 			console.log('SMTP2GO Response:', JSON.stringify(result, null, 2));
 
 			if (!response.ok) {
-				// Handle API errors
+				// Handle API errors according to SMTP2GO format
 				const errorMessage = result.data?.error || result.error || `HTTP ${response.status}`;
-				console.error('SMTP2GO API Error:', errorMessage, 'Full response:', result);
-				throw new BizError(`SMTP2GO API Error: ${errorMessage}`);
+				const errorCode = result.data?.error_code || 'UNKNOWN_ERROR';
+				console.error('SMTP2GO API Error Details:');
+				console.error('- Status:', response.status);
+				console.error('- Error Code:', errorCode);
+				console.error('- Error Message:', errorMessage);
+				console.error('- Full Response:', result);
+				throw new BizError(`SMTP2GO API Error [${errorCode}]: ${errorMessage}`);
 			}
 
 			// Check if the email was successfully sent according to SMTP2GO response format
