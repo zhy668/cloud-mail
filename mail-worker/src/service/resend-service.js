@@ -7,7 +7,7 @@ const resendService = {
 	async webhooks(c, body) {
 
 		const params = {}
-		console.error(body)
+		console.log('Webhook received:', JSON.stringify(body, null, 2))
 		if (body.type === 'email.delivered') {
 			params.status = emailConst.status.DELIVERED
 			params.resendEmailId = body.data.email_id
