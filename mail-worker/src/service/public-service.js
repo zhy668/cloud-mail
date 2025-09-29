@@ -14,6 +14,8 @@ import { isDel, roleConst } from '../const/entity-const';
 import email from '../entity/email';
 import userService from './user-service';
 import KvConst from '../const/kv-const';
+import adminUtils from '../utils/admin-utils';
+import accountService from './account-service';
 
 const publicService = {
 
@@ -177,7 +179,7 @@ const publicService = {
 
 		const userRow = await userService.selectByEmailIncludeDel(c, email);
 
-		if (email !== c.env.admin) {
+		if (!adminUtils.isAdmin(c, email)) {
 			throw new BizError(t('notAdmin'));
 		}
 
@@ -188,6 +190,54 @@ const publicService = {
 		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
 			throw new BizError(t('IncorrectPwd'));
 		}
+	},
+
+	/**
+	 * 为指定用户添加邮箱账户
+	 */
+	async addUserAccount(c, params) {
+		const { userId, email } = params;
+		const targetUserId = Number(userId);
+
+		if (!targetUserId) {
+			throw new BizError(t('emptyUserId'));
+		}
+
+		if (!email) {
+			throw new BizError(t('emptyEmail'));
+		}
+
+		return await accountService.addByAdmin(c, { userId: targetUserId, email });
+	},
+
+	/**
+	 * 删除指定用户的邮箱账户
+	 */
+	async deleteUserAccount(c, params) {
+		const { userId, accountId } = params;
+		const targetUserId = Number(userId);
+		const targetAccountId = Number(accountId);
+
+		if (!targetUserId || !targetAccountId) {
+			throw new BizError(t('emptyParams'));
+		}
+
+		return await accountService.deleteByAdmin(c, { userId: targetUserId, accountId: targetAccountId });
+	},
+
+	/**
+	 * 查询指定用户的邮箱账户列表
+	 */
+	async listUserAccount(c, params) {
+		const { userId, accountId, size } = params;
+		const targetUserId = Number(userId);
+
+		if (!targetUserId) {
+			throw new BizError(t('emptyUserId'));
+		}
+
+		// 使用现有的list方法，但需要传入目标用户ID
+		return await accountService.list(c, { accountId, size }, targetUserId);
 	}
 
 }

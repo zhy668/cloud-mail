@@ -16,6 +16,7 @@ import saltHashUtils from '../utils/crypto-utils';
 import constant from '../const/constant';
 import { t } from '../i18n/i18n'
 import reqUtils from '../utils/req-utils';
+import adminUtils from '../utils/admin-utils';
 
 const userService = {
 
@@ -26,7 +27,7 @@ const userService = {
 		const [account, roleRow, permKeys] = await Promise.all([
 			accountService.selectByEmailIncludeDel(c, userRow.email),
 			roleService.selectById(c, userRow.type),
-			userRow.email === c.env.admin ? Promise.resolve(['*']) : permService.userPermKeys(c, userId)
+			adminUtils.isAdmin(c, userRow.email) ? Promise.resolve(['*']) : permService.userPermKeys(c, userId)
 		]);
 
 		const user = {};
@@ -38,7 +39,7 @@ const userService = {
 		user.permKeys = permKeys;
 		user.role = roleRow
 
-		if (c.env.admin === userRow.email) {
+		if (adminUtils.isAdmin(c, userRow.email)) {
 			user.role = constant.ADMIN_ROLE
 		}
 
@@ -160,8 +161,8 @@ const userService = {
 			return;
 		}
 
-		const adminEmail = c.env.admin;
-		const hasAdmin = existUsers.some(row => row.email === adminEmail);
+		const adminEmails = adminUtils.getAdminEmails(c);
+		const hasAdmin = existUsers.some(row => adminEmails.includes(row.email));
 
 		if (hasAdmin) {
 			throw new BizError(t('cantDelAdmin'));
@@ -274,7 +275,7 @@ const userService = {
 				sendAction.hasPerm = false;
 			}
 
-			if (user.email === c.env.admin) {
+			if (adminUtils.isAdmin(c, user.email)) {
 				sendAction.sendType = constant.ADMIN_ROLE.sendType;
 				sendAction.sendCount = constant.ADMIN_ROLE.sendCount;
 				sendAction.hasPerm = true;

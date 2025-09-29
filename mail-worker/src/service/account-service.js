@@ -12,6 +12,7 @@ import turnstileService from './turnstile-service';
 import roleService from './role-service';
 import { t } from '../i18n/i18n';
 import verifyRecordService from './verify-record-service';
+import adminUtils from '../utils/admin-utils';
 
 const accountService = {
 
@@ -61,7 +62,7 @@ const accountService = {
 		const userRow = await userService.selectById(c, userId);
 		const roleRow = await roleService.selectById(c, userRow.type);
 
-		if (userRow.email !== c.env.admin) {
+		if (!adminUtils.isAdmin(c, userRow.email)) {
 
 			if (roleRow.accountCount > 0) {
 				const userAccountCount = await accountService.countUserAccount(c, userId)
@@ -245,7 +246,7 @@ const accountService = {
 			throw new BizError(t('roleNotExist'));
 		}
 
-		if (userRow.email !== c.env.admin) {
+		if (!adminUtils.isAdmin(c, userRow.email)) {
 
 			if (roleRow.accountCount > 0) {
 				const userAccountCount = await this.countUserAccount(c, targetUserId);

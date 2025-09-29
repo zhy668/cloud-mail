@@ -166,14 +166,77 @@ Content-Type: application/json
 - 创建账户记录
 
 ### 12. DELETE `/user/admin/account/delete` ✅ 正常
-**功能**: 管理员删除用户账户  
-**参数**: `{userId, accountId}`  
-**实现状态**: ✅ 完整实现  
+**功能**: 管理员删除用户账户
+**参数**: `{userId, accountId}`
+**实现状态**: ✅ 完整实现
 
 **实际功能**:
 - 验证用户和账户存在性
 - 防止删除主账户
 - 逻辑删除账户记录
+
+## 🆕 新增Public API (v2.1.0)
+
+### 13. POST `/public/addUserAccount` ✅ 新增
+**功能**: 为指定用户添加邮箱账户
+**参数**: `{userId, email}` (request body)
+**认证**: Public Token
+**实现状态**: ✅ 完整实现
+
+**支持的调用方式**:
+```bash
+POST /api/public/addUserAccount
+Authorization: <public-token>
+Content-Type: application/json
+
+{
+  "userId": 123,
+  "email": "user@example.com"
+}
+```
+
+**实际功能**:
+- 邮箱格式验证
+- 域名白名单检查
+- 用户存在性验证
+- 账户限制检查
+- 创建邮箱账户记录
+
+### 14. DELETE `/public/deleteUserAccount` ✅ 新增
+**功能**: 删除指定用户的邮箱账户
+**参数**: `userId`, `accountId` (query参数)
+**认证**: Public Token
+**实现状态**: ✅ 完整实现
+
+**支持的调用方式**:
+```bash
+DELETE /api/public/deleteUserAccount?userId=123&accountId=456
+Authorization: <public-token>
+```
+
+**实际功能**:
+- 验证用户和账户存在性
+- 检查账户归属关系
+- 防止删除主邮箱账户
+- 逻辑删除账户记录
+
+### 15. GET `/public/listUserAccount` ✅ 新增
+**功能**: 查询指定用户的邮箱账户列表
+**参数**: `userId`, `accountId`, `size` (query参数)
+**认证**: Public Token
+**实现状态**: ✅ 完整实现
+
+**支持的调用方式**:
+```bash
+GET /api/public/listUserAccount?userId=123&size=20&accountId=0
+Authorization: <public-token>
+```
+
+**实际功能**:
+- 分页查询用户邮箱列表
+- 按账户ID排序
+- 返回账户详细信息
+- 支持游标分页
 
 ## 🔍 功能增强和修复记录
 
@@ -206,15 +269,19 @@ Content-Type: application/json
 | PUT /user/restore | ✅ | ✅ | ✅ | ✅ | 正常 |
 | POST /user/admin/account/add | ✅ | ✅ | ✅ | ✅ | 正常 |
 | DELETE /user/admin/account/delete | ✅ | ✅ | ✅ | ✅ | 正常 |
+| POST /public/addUserAccount | ✅ | ✅ | ✅ | ✅ | 新增 |
+| DELETE /public/deleteUserAccount | ✅ | ✅ | ✅ | ✅ | 新增 |
+| GET /public/listUserAccount | ✅ | ✅ | ✅ | ✅ | 新增 |
 
 ## 🛡️ 安全特性
 
 1. **双重认证支持**: Public Token + JWT认证方式
-2. **权限控制**: 基于角色的细粒度权限检查
-3. **参数验证**: 严格的输入参数验证和类型检查
-4. **管理员保护**: 禁止删除管理员账户的安全机制
-5. **数据完整性**: 级联删除相关数据，避免数据孤岛
-6. **错误处理**: 完善的错误信息返回和国际化支持
+2. **多管理员支持**: 支持配置多个管理员邮箱，任何管理员都可创建Token
+3. **权限控制**: 基于角色的细粒度权限检查
+4. **参数验证**: 严格的输入参数验证和类型检查
+5. **管理员保护**: 禁止删除管理员账户的安全机制
+6. **数据完整性**: 级联删除相关数据，避免数据孤岛
+7. **错误处理**: 完善的错误信息返回和国际化支持
 
 ## 🧪 测试验证
 
@@ -239,7 +306,16 @@ Authorization: edff8a3e-405b-4419-ac3b-4c594d105fa9
 ✅ **所有用户API功能完整实现且测试通过**
 ✅ **删除API与官方文档完全一致**
 ✅ **支持Public Token认证，无需JWT登录**
+✅ **新增多管理员支持和邮箱管理API**
 ✅ **安全性和数据完整性得到保障**
 ✅ **错误处理和国际化支持完善**
+✅ **向后兼容，无破坏性更改**
 
 所有API都有实际的数据库操作和业务逻辑实现，经过实际测试验证功能正常。
+
+## 🆕 v2.1.0 更新内容
+
+1. **多管理员支持**: 配置文件支持单个或多个管理员邮箱
+2. **邮箱管理API**: 新增3个Public API用于管理用户邮箱
+3. **向后兼容**: 现有配置和功能无需修改即可继续使用
+4. **安全增强**: 管理员工具类统一权限验证逻辑
