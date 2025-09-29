@@ -11,17 +11,23 @@ const adminUtils = {
      */
     isAdmin(c, email) {
         const admin = c.env.admin;
-        
-        // 如果admin是字符串（单个管理员）
+
+        // 如果admin是字符串
         if (typeof admin === 'string') {
+            // 检查是否包含逗号（多个管理员）
+            if (admin.includes(',')) {
+                const adminEmails = admin.split(',').map(e => e.trim());
+                return adminEmails.includes(email);
+            }
+            // 单个管理员
             return email === admin;
         }
-        
+
         // 如果admin是数组（多个管理员）
         if (Array.isArray(admin)) {
             return admin.includes(email);
         }
-        
+
         // 兼容性处理：如果admin未定义或格式错误，返回false
         return false;
     },
@@ -33,17 +39,22 @@ const adminUtils = {
      */
     getAdminEmails(c) {
         const admin = c.env.admin;
-        
-        // 如果admin是字符串（单个管理员）
+
+        // 如果admin是字符串
         if (typeof admin === 'string') {
+            // 检查是否包含逗号（多个管理员）
+            if (admin.includes(',')) {
+                return admin.split(',').map(e => e.trim());
+            }
+            // 单个管理员
             return [admin];
         }
-        
+
         // 如果admin是数组（多个管理员）
         if (Array.isArray(admin)) {
             return admin;
         }
-        
+
         // 兼容性处理：如果admin未定义或格式错误，返回空数组
         return [];
     },

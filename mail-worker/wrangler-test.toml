@@ -33,7 +33,7 @@ crons = ["0 16 * * *"]	#定时任务每天晚上12点执行
 [vars]
 orm_log = false
 domain = ["mornglow.top"]				#邮件域名可可配置多个 示例: ["example1.com","example2.com"]
-admin = ["admin@mornglow.top"]				#管理员的邮箱 支持单个或多个 示例: ["admin@example.com","admin2@example.com"]
+admin = admin@mornglow.top				#管理员的邮箱 支持单个或多个，多个用逗号分隔
 jwt_secret = "asdfsadfasgasdgagda"			#jwt令牌的密钥,随便填一串字符串
 
 [build]

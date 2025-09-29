@@ -6,11 +6,14 @@
 
 **配置方式**:
 ```toml
-# 单个管理员（向后兼容）
-admin = "admin@example.com"
+# 单个管理员（推荐格式）
+admin = admin@example.com
 
-# 多个管理员
-admin = ["admin1@example.com", "admin2@example.com", "admin3@example.com"]
+# 多个管理员（逗号分隔）
+admin = admin1@example.com,admin2@example.com,admin3@example.com
+
+# 也支持数组格式（如果TOML解析器支持）
+admin = ["admin1@example.com", "admin2@example.com"]
 ```
 
 **功能说明**:
