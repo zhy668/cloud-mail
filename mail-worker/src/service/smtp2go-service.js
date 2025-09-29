@@ -61,23 +61,18 @@ const smtp2goService = {
 			subject: validatedSubject
 		};
 
-		// Log the payload for debugging
-		console.log('SMTP2GO Request Details:');
-		console.log('- API Key:', apiKey ? `${apiKey.substring(0, 10)}...` : 'MISSING');
-		console.log('- Sender:', sender);
-		console.log('- Sender Domain:', sender.split('@')[1]);
-		console.log('- Recipients:', Array.isArray(to) ? to : [to]);
-		console.log('- Subject:', subject);
-		console.log('- Payload:', JSON.stringify(payload, null, 2));
+		// Simplified logging with Beijing timezone
+		const now = new Date();
+		const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+		const timestamp = beijingTime.toISOString().replace('T', ' ').slice(0, 19) + ' +08:00';
 
-		// Validate sender domain
+		console.log(`[${timestamp}] SMTP2GO: Sending email from ${sender} to ${Array.isArray(to) ? to.join(', ') : to}`);
+		console.log(`[${timestamp}] SMTP2GO: Subject: "${validatedSubject}"`);
+
+		// Only warn about domain issues, not every request
 		const senderDomain = sender.split('@')[1];
-		console.log('⚠️  IMPORTANT: Ensure domain', senderDomain, 'is verified in your SMTP2GO account');
-
-		// Check if this might be a domain verification issue
 		if (!senderDomain || senderDomain.includes('abrdns.com')) {
-			console.warn('🚨 POTENTIAL ISSUE: Using abrdns.com subdomain. This domain must be verified in SMTP2GO.');
-			console.warn('📋 SOLUTION: Add and verify', senderDomain, 'in your SMTP2GO account settings.');
+			console.warn(`[${timestamp}] SMTP2GO: ⚠️ Domain ${senderDomain} may need verification in SMTP2GO account`);
 		}
 
 		// Add optional parameters with content validation
@@ -139,19 +134,16 @@ const smtp2goService = {
 
 			const result = await response.json();
 
-			// Log the response for debugging
-			console.log('SMTP2GO Response Status:', response.status);
-			console.log('SMTP2GO Response:', JSON.stringify(result, null, 2));
+			// Simplified response logging with timestamp
+			const responseTime = new Date();
+			const responseBeijingTime = new Date(responseTime.getTime() + 8 * 60 * 60 * 1000);
+			const responseTimestamp = responseBeijingTime.toISOString().replace('T', ' ').slice(0, 19) + ' +08:00';
 
 			if (!response.ok) {
 				// Handle API errors according to SMTP2GO format
 				const errorMessage = result.data?.error || result.error || `HTTP ${response.status}`;
 				const errorCode = result.data?.error_code || 'UNKNOWN_ERROR';
-				console.error('SMTP2GO API Error Details:');
-				console.error('- Status:', response.status);
-				console.error('- Error Code:', errorCode);
-				console.error('- Error Message:', errorMessage);
-				console.error('- Full Response:', result);
+				console.error(`[${responseTimestamp}] SMTP2GO: ❌ API Error [${errorCode}]: ${errorMessage}`);
 				throw new BizError(`SMTP2GO API Error [${errorCode}]: ${errorMessage}`);
 			}
 
@@ -159,20 +151,18 @@ const smtp2goService = {
 			if (result.data && result.data.failed > 0) {
 				const failures = result.data.failures || [];
 				const failureMessages = failures.map(f => f.error || 'Unknown error').join(', ');
-				console.error('SMTP2GO Send Failed:', failureMessages, 'Full response:', result);
+				console.error(`[${responseTimestamp}] SMTP2GO: ❌ Send failed: ${failureMessages}`);
 				throw new BizError(`SMTP2GO Send Failed: ${failureMessages}`);
 			}
 
 			// Validate that we have a successful response with email_id
 			if (!result.data || !result.data.email_id) {
-				console.error('SMTP2GO Invalid Response: Missing email_id', result);
+				console.error(`[${responseTimestamp}] SMTP2GO: ❌ Invalid response: Missing email_id`);
 				throw new BizError('SMTP2GO Send Failed: Invalid response format');
 			}
 
-			// Log success but warn about potential delivery issues
-			console.log('✅ SMTP2GO API Success - Email ID:', result.data.email_id);
-			console.log('📧 Email queued for delivery. Check SMTP2GO dashboard for delivery status.');
-			console.log('⚠️  If bounces occur, verify sender domain is properly configured in SMTP2GO.');
+			// Simple success log
+			console.log(`[${responseTimestamp}] SMTP2GO: ✅ Email sent successfully, ID: ${result.data.email_id}`);
 
 			return result;
 

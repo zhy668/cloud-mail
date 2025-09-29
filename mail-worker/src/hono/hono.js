@@ -6,6 +6,40 @@ import { cors } from 'hono/cors';
 
 app.use('*', cors());
 
+// Custom logging middleware with timezone support
+app.use('*', async (c, next) => {
+	const start = Date.now();
+	const method = c.req.method;
+	const path = c.req.path;
+
+	// Skip logging for frequent polling endpoints to reduce noise
+	const skipLogging = [
+		'/email/latest',
+		'/health',
+		'/ping'
+	].some(endpoint => path.includes(endpoint));
+
+	await next();
+
+	if (!skipLogging) {
+		const duration = Date.now() - start;
+		const status = c.res.status;
+
+		// Format timestamp in Beijing time (UTC+8)
+		const now = new Date();
+		const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+		const timestamp = beijingTime.toISOString().replace('T', ' ').slice(0, 19) + ' +08:00';
+
+		// Simple, clean log format
+		console.log(`[${timestamp}] ${method} ${path} - ${status} (${duration}ms)`);
+
+		// Log errors with more detail
+		if (status >= 400) {
+			console.error(`[ERROR] ${method} ${path} - Status: ${status}, Duration: ${duration}ms`);
+		}
+	}
+});
+
 app.onError((err, c) => {
 	if (err.name === 'BizError') {
 		console.log(err.message);

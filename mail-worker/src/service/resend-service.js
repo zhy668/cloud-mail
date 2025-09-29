@@ -7,7 +7,13 @@ const resendService = {
 	async webhooks(c, body) {
 
 		const params = {}
-		console.log('Webhook received:', JSON.stringify(body, null, 2))
+
+		// Simplified webhook logging with Beijing timezone
+		const now = new Date();
+		const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+		const timestamp = beijingTime.toISOString().replace('T', ' ').slice(0, 19) + ' +08:00';
+
+		console.log(`[${timestamp}] Webhook: ${body.type} for email ${body.data?.email_id || 'unknown'}`)
 		if (body.type === 'email.delivered') {
 			params.status = emailConst.status.DELIVERED
 			params.resendEmailId = body.data.email_id
