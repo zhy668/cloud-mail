@@ -20,6 +20,7 @@ import kvConst from '../const/kv-const';
 import { t } from '../i18n/i18n'
 import r2Service from './r2-service';
 import domainUtils from '../utils/domain-uitls';
+import adminUtils from '../utils/admin-utils';
 
 const emailService = {
 
@@ -155,11 +156,11 @@ const emailService = {
 		const userRow = await userService.selectById(c, userId);
 		const roleRow = await roleService.selectById(c, userRow.type);
 
-		if (c.env.admin !== userRow.email && roleRow.sendType === 'ban') {
+		if (!adminUtils.isAdmin(c, userRow.email) && roleRow.sendType === 'ban') {
 			throw new BizError(t('bannedSend'), 403);
 		}
 
-		if (c.env.admin !== userRow.email && roleRow.sendCount) {
+		if (!adminUtils.isAdmin(c, userRow.email) && roleRow.sendCount) {
 
 			if (userRow.sendCount >= roleRow.sendCount) {
 				if (roleRow.sendType === 'day') throw new BizError(t('daySendLimit'), 403);
@@ -205,7 +206,7 @@ const emailService = {
 			throw new BizError(t('sendEmailNotCurUser'));
 		}
 
-		if (c.env.admin !== userRow.email) {
+		if (!adminUtils.isAdmin(c, userRow.email)) {
 
 			if(!roleService.hasAvailDomainPerm(roleRow.availDomain, accountRow.email)) {
 				throw new BizError(t('noDomainPermSend'),403)
