@@ -296,6 +296,9 @@ const zhTW = {
     clear: '清除',
     include: '包含',
     delAllEmailConfirm: '您確定要刪除嗎？',
-    s3Configuration: 'S3 設定'
+    s3Configuration: 'S3 設定',
+    confirmDeletionOfContacts: '確認清除這些聯絡人嗎？',
+    recentContacts: '最近聯絡人',
+    selectContacts: '選中'
 }
 export default zhTW

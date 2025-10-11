@@ -296,7 +296,9 @@ const zh = {
     clear: '清除',
     include: '包含',
     delAllEmailConfirm: '确定要删除吗？',
-    s3Configuration: 'S3 配置'
-
+    s3Configuration: 'S3 配置',
+    confirmDeletionOfContacts: '确认清除这些联系人吗？',
+    recentContacts: '最近联系人',
+    selectContacts: '选中'
 }
 export default zh

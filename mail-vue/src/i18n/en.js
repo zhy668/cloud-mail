@@ -296,7 +296,10 @@ const en = {
     clear: 'Clear',
     include: 'Include',
     delAllEmailConfirm: 'Do you really want to delete it?',
-    s3Configuration: 'S3 Configuration'
+    s3Configuration: 'S3 Configuration',
+    confirmDeletionOfContacts: 'Confirm clearing contacts?',
+    recentContacts: 'Recent contacts',
+    selectContacts: 'Select'
 }
 
 export default en

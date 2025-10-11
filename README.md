@@ -4,9 +4,10 @@
 
 <div align="center">
 <h1>Cloud Mail</h1>
+<p>v2.2</p>
 </div>
 <div align="center">
-    <h4>使用Vue3开发的响应式邮箱服务，支持邮件发送，无需服务器可部署到Cloudflare平台 🎉</h4> 
+    <h4>使用Vue3开发的响应式邮箱服务，支持邮件发送，无需服务器可部署到Cloudflare平台 🎉</h4>
 </div>
 <div align="center">
     <span>简体中文 | <a href="/README-en.md" style="margin-left: 5px">English </a></span>
@@ -82,19 +83,6 @@
 - **文件存储**：[Cloudflare R2](https://developers.cloudflare.com/r2/)
 
 
-## 赞助
-
-
-<a href="https://doc.skymail.ink/support.html" >
-<img width="170px" src="./doc/images/support.png" alt="">
-</a><br><br>
-
-
-**特别赞助商**
-
-[DartNode](https://dartnode.com)：提供云计算服务资源支持
-
-[![Powered by DartNode](https://dartnode.com/branding/DN-Open-Source-sm.png)](https://dartnode.com "Powered by DartNode - Free VPS for Open Source")
 
 ## 许可证
 
