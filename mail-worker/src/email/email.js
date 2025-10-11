@@ -13,6 +13,8 @@ import timezone from 'dayjs/plugin/timezone';
 import roleService from '../service/role-service';
 import verifyUtils from '../utils/verify-utils';
 import r2Service from '../service/r2-service';
+import adminUtils from '../utils/admin-utils';
+import userService from '../service/user-service';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -58,49 +60,52 @@ export async function email(message, env, ctx) {
 			return;
 		}
 
-		if (account && account.email !== env.admin) {
+		if (account) {
+			const userRow = await userService.selectById({ env: env }, account.userId);
 
-			let { banEmail, banEmailType, availDomain } = await roleService.selectByUserId({ env: env }, account.userId);
+			if (!adminUtils.isAdmin({ env: env }, userRow.email)) {
 
-			if(!roleService.hasAvailDomainPerm(availDomain, message.to)) {
-				message.setReject('Mailbox disabled');
-				return;
-			}
+				let { banEmail, banEmailType, availDomain } = await roleService.selectByUserId({ env: env }, account.userId);
 
-			banEmail = banEmail.split(',').filter(item => item !== '');
+				if(!roleService.hasAvailDomainPerm(availDomain, message.to)) {
+					message.setReject('Mailbox disabled');
+					return;
+				}
+
+				banEmail = banEmail.split(',').filter(item => item !== '');
 
 
-			if (banEmail.includes('*')) {
+				if (banEmail.includes('*')) {
 
-				 if (!banEmailHandler(banEmailType,message,email)) return
+					 if (!banEmailHandler(banEmailType,message,email)) return
 
-			}
+				}
 
-			for (const item of banEmail) {
+				for (const item of banEmail) {
 
-				if (verifyUtils.isDomain(item)) {
+					if (verifyUtils.isDomain(item)) {
 
-					const banDomain = item.toLowerCase();
-					const receiveDomain = emailUtils.getDomain(email.from.address.toLowerCase());
+						const banDomain = item.toLowerCase();
+						const receiveDomain = emailUtils.getDomain(email.from.address.toLowerCase());
 
-					if (banDomain === receiveDomain) {
+						if (banDomain === receiveDomain) {
 
-						if (!banEmailHandler(banEmailType,message,email)) return
+							if (!banEmailHandler(banEmailType,message,email)) return
 
-					}
+						}
 
-				} else {
+					} else {
 
-					if (item.toLowerCase() === email.from.address.toLowerCase()) {
+						if (item.toLowerCase() === email.from.address.toLowerCase()) {
 
-						if (!banEmailHandler(banEmailType,message,email)) return
+							if (!banEmailHandler(banEmailType,message,email)) return
+
+						}
 
 					}
 
 				}
-
 			}
-
 		}
 
 		if (!email.to) {

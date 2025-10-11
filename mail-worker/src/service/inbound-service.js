@@ -4,10 +4,12 @@ import settingService from './setting-service';
 import attService from './att-service';
 import r2Service from './r2-service';
 import roleService from './role-service';
+import userService from './user-service';
 import constant from '../const/constant';
 import fileUtils from '../utils/file-utils';
 import emailUtils from '../utils/email-utils';
 import verifyUtils from '../utils/verify-utils';
+import adminUtils from '../utils/admin-utils';
 import { emailConst, isDel, roleConst, settingConst } from '../const/entity-const';
 import BizError from '../error/biz-error';
 import { t } from '../i18n/i18n';
@@ -58,8 +60,11 @@ const inboundService = {
             }
 
             // Apply role-based restrictions if account exists
-            if (account && account.email !== c.env.admin) {
-                await this.applyRoleRestrictions(c, account, convertedData);
+            if (account) {
+                const userRow = await userService.selectById({ env: c.env }, account.userId);
+                if (!adminUtils.isAdmin({ env: c.env }, userRow.email)) {
+                    await this.applyRoleRestrictions(c, account, convertedData);
+                }
             }
 
             // Prepare email parameters for storage
