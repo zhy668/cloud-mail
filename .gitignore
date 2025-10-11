@@ -29,3 +29,4 @@ mail-vue/dist
 # 本地开发文件，不同步到GitHub
 .cunzhi-memory/
 SYNC_SUMMARY.md
+cloud-mail/
