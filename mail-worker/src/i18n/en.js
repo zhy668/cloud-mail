@@ -66,6 +66,10 @@ const en = {
 	notAdmin: 'The entered email is not an administrator email',
 	cantDelAdmin: 'Cannot delete administrator account',
 	emailExistDatabase: 'Email already exists in the database',
+	emptyAccountId: 'Account ID cannot be empty',
+	accountNotExist: 'Account does not exist',
+	noPermission: 'No permission',
+	emptyUserId: 'User ID cannot be empty',
 	perms: {
 		"邮件": "Email",
 		"邮件发送": "Send Email",

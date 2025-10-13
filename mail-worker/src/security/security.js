@@ -8,6 +8,7 @@ import permService from '../service/perm-service';
 import { t } from '../i18n/i18n'
 import app from '../hono/hono';
 import adminUtils from '../utils/admin-utils';
+import apiTokenService from '../service/api-token-service';
 
 const exclude = [
 	'/login',
@@ -17,7 +18,9 @@ const exclude = [
 	'/webhooks',
 	'/init',
 	'/public/genToken',
-	'/inbound'
+	'/inbound',
+	'/user/token/generate',
+	'/user/token/revoke'
 ];
 
 const requirePerms = [
@@ -87,6 +90,8 @@ app.use('*', async (c, next) => {
 
 	const path = c.req.path;
 
+	console.log('[Security] Path:', path);
+
 	if (path.startsWith('/test')) {
 		return await next();
 	}
@@ -95,7 +100,10 @@ app.use('*', async (c, next) => {
 		return path.startsWith(item);
 	});
 
+	console.log('[Security] Exclude index:', index, 'for path:', path);
+
 	if (index > -1) {
+		console.log('[Security] Path excluded, passing through');
 		return await next();
 	}
 
@@ -106,6 +114,37 @@ app.use('*', async (c, next) => {
 		if (publicToken !== userPublicToken) {
 			throw new BizError(t('publicTokenFail'), 401);
 		}
+		return await next();
+	}
+
+	// 检查是否是用户API Token认证的路径
+	const userApiPaths = ['/user/account/', '/user/email/'];
+	const isUserApiPath = userApiPaths.some(apiPath => path.startsWith(apiPath));
+
+	if (isUserApiPath) {
+		const apiToken = c.req.header(constant.TOKEN_HEADER);
+
+		if (!apiToken) {
+			throw new BizError(t('authExpired'), 401);
+		}
+
+		const tokenData = await apiTokenService.verifyToken(c, apiToken);
+
+		if (!tokenData) {
+			throw new BizError(t('authExpired'), 401);
+		}
+
+		// 获取用户完整信息
+		const userRow = await userService.selectById(c, tokenData.userId);
+
+		if (!userRow) {
+			throw new BizError(t('authExpired'), 401);
+		}
+
+		// 设置用户上下文
+		c.set('user', userRow);
+		c.set('isApiToken', true); // 标记这是API Token认证
+
 		return await next();
 	}
 

@@ -66,6 +66,10 @@ const zh = {
 	notAdmin: '输入的邮箱不是管理员邮箱',
 	cantDelAdmin: '禁止删除管理员账号',
 	emailExistDatabase: '有邮箱已存在数据库中',
+	emptyAccountId: '账户ID不能为空',
+	accountNotExist: '账户不存在',
+	noPermission: '没有权限',
+	emptyUserId: '用户ID不能为空',
 	perms: {
 		"邮件": "邮件",
 		"邮件发送": "邮件发送",

@@ -66,6 +66,10 @@ const zhTW = {
 	notAdmin: '輸入的郵件不是管理員郵件',
 	cantDelAdmin: '禁止刪除管理員帳號',
 	emailExistDatabase: '郵件已存在於資料庫',
+	emptyAccountId: '帳戶ID不能為空',
+	accountNotExist: '帳戶不存在',
+	noPermission: '沒有權限',
+	emptyUserId: '用戶ID不能為空',
 	perms: {
 		"邮件": "郵件",
 		"邮件发送": "發送郵件",

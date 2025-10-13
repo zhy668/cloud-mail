@@ -4,13 +4,193 @@
 
 ## 版本信息
 
-- **当前版本**: v2.2
+- **当前版本**: v2.3
 - **基于**: Cloud Mail 原版 v2.2
-- **更新日期**: 2025-01-11
+- **更新日期**: 2025-10-13
 
-## 🆕 新增功能（v2.1.0）
+## 🆕 新增功能
 
-### 1. 多管理员支持
+### v2.3.0 - 用户API Token权限系统
+
+新增用户级别的API Token功能,允许普通用户通过API管理自己的邮箱和邮件。
+
+#### 核心特性
+- ✅ 用户独立的API Token(UUID格式)
+- ✅ 用户只能操作自己的数据
+- ✅ 域名权限检查
+- ✅ 多号模式兼容
+- ✅ 不影响管理员Public Token
+- ✅ Token撤销机制
+
+#### API端点
+
+##### 1. 生成用户API Token
+```bash
+POST /api/user/token/generate
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "user_password"
+}
+
+# 响应
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "token": "e301b7af-90ff-4d1b-8b4f-7330a08f162f",
+    "userId": 1
+  }
+}
+```
+
+##### 2. 撤销用户API Token
+```bash
+POST /api/user/token/revoke
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "user_password"
+}
+
+# 响应
+{
+  "code": 200,
+  "message": "success"
+}
+```
+
+##### 3. 查询用户邮箱列表
+```bash
+GET /api/user/account/list
+Authorization: <user-api-token>
+
+# 响应
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "accountId": 1,
+      "email": "user@example.com",
+      "userId": 1
+    }
+  ]
+}
+```
+
+##### 4. 添加邮箱
+```bash
+POST /api/user/account/add
+Authorization: <user-api-token>
+Content-Type: application/json
+
+{
+  "email": "newmail@example.com"
+}
+
+# 响应
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "accountId": 2
+  }
+}
+```
+
+##### 5. 删除邮箱
+```bash
+DELETE /api/user/account/delete?accountId=2
+Authorization: <user-api-token>
+
+# 响应
+{
+  "code": 200,
+  "message": "success"
+}
+```
+
+##### 6. 查询邮件列表
+```bash
+POST /api/user/email/list
+Authorization: <user-api-token>
+Content-Type: application/json
+
+{
+  "toEmail": "user@example.com",
+  "sendName": "sender",
+  "sendEmail": "sender@example.com",
+  "subject": "test",
+  "content": "content",
+  "timeSort": "desc",
+  "type": 0,
+  "isDel": 0,
+  "num": 1,
+  "size": 20
+}
+
+# 响应
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "emailId": 1,
+      "subject": "Test Email",
+      "sendEmail": "sender@example.com",
+      "toEmail": "user@example.com",
+      "createTime": "2025-10-13 12:00:00"
+    }
+  ]
+}
+```
+
+#### 权限约束
+1. **用户隔离**: 用户只能查询和操作自己的邮箱和邮件
+2. **域名权限**: 添加邮箱时检查用户角色的`availDomain`权限
+3. **多号模式**: 遵守系统的`manyEmail`和`addEmail`设置
+4. **账户限制**: 遵守角色的`accountCount`限制
+
+#### 使用示例
+```bash
+# 1. 生成Token
+TOKEN=$(curl -X POST "https://your-domain.com/api/user/token/generate" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password"}' \
+  | jq -r '.data.token')
+
+# 2. 查询邮箱列表
+curl -X GET "https://your-domain.com/api/user/account/list" \
+  -H "Authorization: $TOKEN"
+
+# 3. 添加邮箱
+curl -X POST "https://your-domain.com/api/user/account/add" \
+  -H "Authorization: $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"newmail@example.com"}'
+
+# 4. 查询邮件
+curl -X POST "https://your-domain.com/api/user/email/list" \
+  -H "Authorization: $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"type":0,"isDel":0,"num":1,"size":20}'
+
+# 5. 删除邮箱
+curl -X DELETE "https://your-domain.com/api/user/account/delete?accountId=2" \
+  -H "Authorization: $TOKEN"
+
+# 6. 撤销Token
+curl -X POST "https://your-domain.com/api/user/token/revoke" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password"}'
+```
+
+### v2.1.0
+
+#### 1. 多管理员支持
 
 **配置方式**:
 ```toml
@@ -22,11 +202,11 @@ admin = "admin1@example.com,admin2@example.com,admin3@example.com"
 
 ```
 
-### 2. 邮箱管理Public API
+#### 2. 邮箱管理Public API
 
 新增3个API接口，支持通过Public Token管理任意用户的邮箱：
 
-#### 2.1 添加用户邮箱
+##### 2.1 添加用户邮箱
 ```bash
 POST /api/public/addUserAccount
 Authorization: <public-token>
@@ -38,21 +218,21 @@ Content-Type: application/json
 }
 ```
 
-#### 2.2 删除用户邮箱
+##### 2.2 删除用户邮箱
 ```bash
 DELETE /api/public/deleteUserAccount?userId=123&accountId=456
 Authorization: <public-token>
 ```
 
-#### 2.3 查询用户邮箱列表
+##### 2.3 查询用户邮箱列表
 ```bash
 GET /api/public/listUserAccount?userId=123&size=20&accountId=0
 Authorization: <public-token>
 ```
 
-### 3. 用户管理增强API
+#### 3. 用户管理增强API
 
-#### 3.1 删除用户（支持email参数）
+##### 3.1 删除用户（支持email参数）
 ```bash
 # 通过userId删除
 DELETE /api/user/delete?userId=123
@@ -64,7 +244,7 @@ Authorization: <public-token>
 ```
 
 
-#### 3.2 批量删除用户
+##### 3.2 批量删除用户
 ```bash
 DELETE /api/user/admin/batchDelete
 Authorization: <public-token>
@@ -164,7 +344,7 @@ INBOUND_IP_WHITELIST=192.168.1.100,203.0.113.10  # 可选
 
 ---
 
-**更新时间**: 2025-01-11  
-**版本**: v2.2  
+**更新时间**: 2025-10-13
+**版本**: v2.3
 **兼容性**: 完全向后兼容原版
 
