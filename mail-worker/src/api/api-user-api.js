@@ -97,6 +97,9 @@ app.post('/user/account/add', async (c) => {
 		if (!roleService.hasAvailDomainPerm(roleRow.availDomain, email)) {
 			throw new BizError(t('noDomainPermAdd'), 403);
 		}
+
+		// 检查API创建邮箱次数限制
+		await apiTokenService.checkAndUpdateApiAddAccountLimit(c, userId);
 	}
 
 	// 添加邮箱（不需要验证码，因为是API调用）

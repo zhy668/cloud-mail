@@ -70,6 +70,9 @@ const zhTW = {
 	accountNotExist: '帳戶不存在',
 	noPermission: '沒有權限',
 	emptyUserId: '用戶ID不能為空',
+	apiPermissionDenied: '您的角色不允許使用API',
+	apiAddAccountDayLimit: '今日API創建郵箱次數已達上限',
+	apiAddAccountTotalLimit: 'API創建郵箱總次數已達上限',
 	perms: {
 		"邮件": "郵件",
 		"邮件发送": "發送郵件",

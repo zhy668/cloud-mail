@@ -287,6 +287,12 @@ const init = {
 			`ALTER TABLE user ADD COLUMN sort INTEGER NOT NULL DEFAULT 0;`,
 			`ALTER TABLE user ADD COLUMN send_count INTEGER NOT NULL DEFAULT 0;`,
 			`ALTER TABLE user ADD COLUMN api_token TEXT;`,
+			`ALTER TABLE user ADD COLUMN api_add_count INTEGER NOT NULL DEFAULT 0;`,
+			`ALTER TABLE user ADD COLUMN api_add_reset_time TEXT;`,
+
+			`ALTER TABLE role ADD COLUMN enable_api INTEGER NOT NULL DEFAULT 1;`,
+			`ALTER TABLE role ADD COLUMN api_add_account_count INTEGER;`,
+			`ALTER TABLE role ADD COLUMN api_add_account_type TEXT NOT NULL DEFAULT 'ban';`,
 
 			`ALTER TABLE attachments ADD COLUMN status INTEGER NOT NULL DEFAULT 0;`,
 			`ALTER TABLE attachments ADD COLUMN type INTEGER NOT NULL DEFAULT 0;`

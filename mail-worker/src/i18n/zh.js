@@ -70,6 +70,9 @@ const zh = {
 	accountNotExist: '账户不存在',
 	noPermission: '没有权限',
 	emptyUserId: '用户ID不能为空',
+	apiPermissionDenied: '您的角色不允许使用API',
+	apiAddAccountDayLimit: '今日API创建邮箱次数已达上限',
+	apiAddAccountTotalLimit: 'API创建邮箱总次数已达上限',
 	perms: {
 		"邮件": "邮件",
 		"邮件发送": "邮件发送",

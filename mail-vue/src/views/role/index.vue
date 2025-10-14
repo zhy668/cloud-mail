@@ -139,6 +139,40 @@
             </div>
           </template>
         </el-tree>
+
+        <!-- API权限配置 -->
+        <div class="api-permission-config" style="margin-top: 20px; padding: 15px; border: 1px solid #dcdfe6; border-radius: 4px;">
+          <h4 style="margin: 0 0 15px 0;">API权限配置</h4>
+
+          <el-form-item label="允许使用API" style="margin-bottom: 15px;">
+            <el-switch v-model="form.enableApi" :active-value="1" :inactive-value="0" />
+          </el-form-item>
+
+          <el-form-item label="API创建邮箱限制" style="margin-bottom: 15px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <el-input-number
+                v-model="form.apiAddAccountCount"
+                controls-position="right"
+                :min="0"
+                :max="99999"
+                size="small"
+                :placeholder="$t('total')"
+                :disabled="form.apiAddAccountType === 'ban'"
+                style="width: 150px;">
+              </el-input-number>
+              <el-select
+                v-model="form.apiAddAccountType"
+                placeholder="Select"
+                size="small"
+                style="width: 100px;">
+                <el-option label="不限制" value="ban"/>
+                <el-option :label="$t('total')" value="count"/>
+                <el-option :label="$t('daily')" value="day"/>
+              </el-select>
+            </div>
+          </el-form-item>
+        </div>
+
         <el-button class="btn" type="primary" :loading="permLoading" @click="roleFormClick"
         >{{ $t('save') }}
         </el-button>
@@ -192,7 +226,10 @@ const form = reactive({
   accountCount: 0,
   sort: 0,
   isDefault: 0,
-  availDomain: []
+  availDomain: [],
+  enableApi: 1,
+  apiAddAccountType: 'ban',
+  apiAddAccountCount: 0
 })
 
 let domainOptions = []
@@ -337,6 +374,9 @@ function resetForm() {
   form.banEmail = []
   form.banEmailType = 0
   form.availDomain = []
+  form.enableApi = 1
+  form.apiAddAccountType = 'ban'
+  form.apiAddAccountCount = 0
   tree.value.setCheckedKeys([])
 }
 
@@ -354,6 +394,9 @@ function openRoleSet(role) {
   form.banEmail = role.banEmail
   form.banEmailType = role.banEmailType
   form.availDomain = role.availDomain
+  form.enableApi = role.enableApi !== undefined ? role.enableApi : 1
+  form.apiAddAccountType = role.apiAddAccountType || 'ban'
+  form.apiAddAccountCount = role.apiAddAccountCount || 0
   nextTick(() => {
     tree.value.setCheckedKeys(role.permIds)
   })

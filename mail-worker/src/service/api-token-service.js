@@ -1,6 +1,8 @@
 import BizError from '../error/biz-error';
 import { t } from '../i18n/i18n';
 import userService from './user-service';
+import roleService from './role-service';
+import adminUtils from '../utils/admin-utils';
 import cryptoUtils from '../utils/crypto-utils';
 import { isDel } from '../const/entity-const';
 import { v4 as uuidv4 } from 'uuid';
@@ -32,6 +34,18 @@ const apiTokenService = {
 
 		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
 			throw new BizError(t('IncorrectPwd'));
+		}
+
+		// 检查用户角色的API权限
+		const roleRow = await roleService.selectById(c, userRow.type);
+
+		if (!roleRow) {
+			throw new BizError(t('roleNotExist'));
+		}
+
+		// 非管理员需要检查API权限
+		if (!adminUtils.isAdmin(c, userRow.email) && roleRow.enableApi !== 1) {
+			throw new BizError(t('apiPermissionDenied'), 403);
 		}
 
 		// 生成新的API Token
@@ -70,11 +84,19 @@ const apiTokenService = {
 		try {
 			// 先从KV中查询（快速验证）
 			const kvData = await c.env.kv.get(KvConst.USER_API_TOKEN + token, { type: 'json' });
-			
+
 			if (kvData) {
 				// 验证用户是否仍然存在且未被删除
 				const userRow = await userService.selectById(c, kvData.userId);
 				if (userRow) {
+					// 检查用户角色的API权限
+					const roleRow = await roleService.selectById(c, userRow.type);
+
+					// 非管理员需要检查API权限
+					if (!adminUtils.isAdmin(c, userRow.email) && (!roleRow || roleRow.enableApi !== 1)) {
+						return null;
+					}
+
 					return {
 						userId: kvData.userId,
 						email: kvData.email
@@ -90,6 +112,14 @@ const apiTokenService = {
 				.get();
 
 			if (!userRow || userRow.isDel === isDel.DELETE || !userRow.apiToken) {
+				return null;
+			}
+
+			// 检查用户角色的API权限
+			const roleRow = await roleService.selectById(c, userRow.type);
+
+			// 非管理员需要检查API权限
+			if (!adminUtils.isAdmin(c, userRow.email) && (!roleRow || roleRow.enableApi !== 1)) {
 				return null;
 			}
 
@@ -157,6 +187,80 @@ const apiTokenService = {
 
 		// 撤销Token
 		await this.revokeToken(c, userRow.userId);
+	},
+
+	/**
+	 * 检查并更新API创建邮箱次数限制
+	 * @param {Object} c - Hono context
+	 * @param {number} userId - 用户ID
+	 * @throws {BizError} 如果超过限制
+	 */
+	async checkAndUpdateApiAddAccountLimit(c, userId) {
+		// 获取用户信息
+		const userRow = await userService.selectById(c, userId);
+
+		if (!userRow) {
+			throw new BizError(t('notExistUser'));
+		}
+
+		// 管理员不受限制
+		if (adminUtils.isAdmin(c, userRow.email)) {
+			return;
+		}
+
+		// 获取角色配置
+		const roleRow = await roleService.selectById(c, userRow.type);
+
+		if (!roleRow) {
+			throw new BizError(t('roleNotExist'));
+		}
+
+		// 如果是ban类型或没有设置限制,不限制
+		if (roleRow.apiAddAccountType === 'ban' || !roleRow.apiAddAccountCount) {
+			return;
+		}
+
+		const now = new Date();
+		const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+
+		// 检查是否需要重置计数(day类型)
+		if (roleRow.apiAddAccountType === 'day') {
+			const resetTime = userRow.apiAddResetTime;
+
+			// 如果是新的一天,重置计数
+			if (!resetTime || resetTime !== today) {
+				await orm(c)
+					.update(user)
+					.set({
+						apiAddCount: 0,
+						apiAddResetTime: today
+					})
+					.where(eq(user.userId, userId))
+					.run();
+
+				// 更新内存中的值
+				userRow.apiAddCount = 0;
+				userRow.apiAddResetTime = today;
+			}
+		}
+
+		// 检查是否超过限制
+		if (userRow.apiAddCount >= roleRow.apiAddAccountCount) {
+			if (roleRow.apiAddAccountType === 'day') {
+				throw new BizError(t('apiAddAccountDayLimit'), 403);
+			} else if (roleRow.apiAddAccountType === 'count') {
+				throw new BizError(t('apiAddAccountTotalLimit'), 403);
+			}
+		}
+
+		// 增加计数
+		await orm(c)
+			.update(user)
+			.set({
+				apiAddCount: userRow.apiAddCount + 1
+			})
+			.where(eq(user.userId, userId))
+			.run();
 	}
 };
 

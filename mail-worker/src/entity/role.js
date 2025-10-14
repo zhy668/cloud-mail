@@ -14,6 +14,9 @@ export const role = sqliteTable('role', {
 	userId: integer('user_id'),
 	sendCount: integer('send_count'),
 	sendType: text('send_type').default('count'),
-	accountCount: integer('account_count')
+	accountCount: integer('account_count'),
+	enableApi: integer('enable_api').default(1),
+	apiAddAccountCount: integer('api_add_account_count'),
+	apiAddAccountType: text('api_add_account_type').default('ban')
 });
 export default role

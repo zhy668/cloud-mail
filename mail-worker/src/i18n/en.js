@@ -70,6 +70,9 @@ const en = {
 	accountNotExist: 'Account does not exist',
 	noPermission: 'No permission',
 	emptyUserId: 'User ID cannot be empty',
+	apiPermissionDenied: 'Your role does not allow API access',
+	apiAddAccountDayLimit: 'Daily API account creation limit reached',
+	apiAddAccountTotalLimit: 'Total API account creation limit reached',
 	perms: {
 		"邮件": "Email",
 		"邮件发送": "Send Email",

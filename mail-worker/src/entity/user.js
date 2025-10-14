@@ -18,6 +18,8 @@ const user = sqliteTable('user', {
 	sendCount: text('send_count').default(0),
 	regKeyId: integer('reg_key_id').default(0).notNull(),
 	isDel: integer('is_del').default(0).notNull(),
-	apiToken: text('api_token')
+	apiToken: text('api_token'),
+	apiAddCount: integer('api_add_count').default(0),
+	apiAddResetTime: text('api_add_reset_time')
 });
 export default user
