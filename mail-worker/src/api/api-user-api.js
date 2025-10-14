@@ -37,6 +37,17 @@ app.post('/user/token/revoke', async (c) => {
 });
 
 /**
+ * 获取API使用情况
+ * GET /user/api/status
+ * Header: Authorization: <api-token>
+ */
+app.get('/user/api/status', async (c) => {
+	const userId = userContext.getUserId(c);
+	const status = await apiTokenService.getApiStatus(c, userId);
+	return c.json(result.ok(status));
+});
+
+/**
  * 添加邮箱账户（用户只能为自己添加）
  * POST /user/account/add
  * Header: Authorization: <api-token>

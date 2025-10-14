@@ -126,12 +126,9 @@ const apiTokenService = {
 				return null;
 			}
 
-			// 只有当数据库中有token时才更新KV缓存
-			// 这样可以避免已撤销的token被重新激活
-			await c.env.kv.put(KvConst.USER_API_TOKEN + token, JSON.stringify({
-				userId: userRow.userId,
-				email: userRow.email
-			}));
+			// 注意: 不在这里写入KV,以节省KV写入额度
+			// KV写入只在generateToken时进行
+			// 如果KV miss,直接查询数据库即可
 
 			return {
 				userId: userRow.userId,
@@ -265,6 +262,62 @@ const apiTokenService = {
 			})
 			.where(eq(user.userId, userId))
 			.run();
+	},
+
+	/**
+	 * 获取用户API使用情况
+	 * @param {Object} c - Hono context
+	 * @param {number} userId - 用户ID
+	 * @returns {Object} API使用情况
+	 */
+	async getApiStatus(c, userId) {
+		// 查询用户信息
+		const userRow = await userService.selectById(c, userId);
+
+		if (!userRow) {
+			throw new BizError(t('notExistUser'));
+		}
+
+		// 查询角色信息
+		const roleRow = await roleService.selectById(c, userRow.type);
+
+		if (!roleRow) {
+			throw new BizError(t('roleNotExist'));
+		}
+
+		// 检查是否是管理员
+		const isAdmin = adminUtils.isAdmin(c, userRow.email);
+
+		// 构建返回数据
+		const status = {
+			hasToken: !!userRow.apiToken,
+			apiEnabled: isAdmin || roleRow.enableApi === 1,
+			isAdmin: isAdmin,
+			addAccountType: roleRow.apiAddAccountType || 'ban',
+			addAccountLimit: roleRow.apiAddAccountCount || 0,
+			addAccountUsed: userRow.apiAddCount || 0,
+			addAccountResetTime: userRow.apiAddResetTime || null
+		};
+
+		// 如果是day类型,检查是否需要显示重置信息
+		if (status.addAccountType === 'day' && status.addAccountResetTime) {
+			const today = new Date().toISOString().split('T')[0];
+			if (status.addAccountResetTime !== today) {
+				// 已经是新的一天,但计数还没重置(等待下次API调用时重置)
+				status.addAccountUsed = 0;
+			}
+		}
+
+		// 计算剩余次数
+		if (isAdmin || status.addAccountType === 'ban') {
+			status.addAccountRemaining = -1; // -1表示无限制
+		} else if (status.addAccountLimit > 0) {
+			status.addAccountRemaining = Math.max(0, status.addAccountLimit - status.addAccountUsed);
+		} else {
+			status.addAccountRemaining = 0;
+		}
+
+		return status;
 	}
 };
 

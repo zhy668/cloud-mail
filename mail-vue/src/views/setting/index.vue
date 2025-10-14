@@ -30,6 +30,55 @@
         </div>
       </div>
     </div>
+    <div class="container" style="margin-top: 20px;">
+      <div class="title">API使用情况</div>
+      <div v-if="apiStatusLoading" style="padding: 20px; text-align: center;">
+        <span>加载中...</span>
+      </div>
+      <div v-else-if="apiStatus">
+        <div class="item">
+          <div>API权限状态</div>
+          <div>
+            <el-tag :type="apiStatus.apiEnabled ? 'success' : 'danger'">
+              {{ apiStatus.apiEnabled ? '已开启' : '未开启' }}
+            </el-tag>
+          </div>
+        </div>
+        <div class="item" v-if="apiStatus.apiEnabled">
+          <div>API Token</div>
+          <div>
+            <el-tag :type="apiStatus.hasToken ? 'success' : 'info'">
+              {{ apiStatus.hasToken ? '已生成' : '未生成' }}
+            </el-tag>
+          </div>
+        </div>
+        <div class="item" v-if="apiStatus.apiEnabled && apiStatus.hasToken">
+          <div>创建邮箱限制</div>
+          <div>
+            <span v-if="apiStatus.addAccountType === 'ban'">无限制</span>
+            <span v-else-if="apiStatus.addAccountType === 'day'">
+              每日限制: {{ apiStatus.addAccountUsed }} / {{ apiStatus.addAccountLimit }}
+              <el-tag type="info" size="small" style="margin-left: 10px;">
+                剩余: {{ apiStatus.addAccountRemaining }}
+              </el-tag>
+            </span>
+            <span v-else-if="apiStatus.addAccountType === 'count'">
+              总计限制: {{ apiStatus.addAccountUsed }} / {{ apiStatus.addAccountLimit }}
+              <el-tag type="info" size="small" style="margin-left: 10px;">
+                剩余: {{ apiStatus.addAccountRemaining }}
+              </el-tag>
+            </span>
+          </div>
+        </div>
+        <div class="item" v-if="apiStatus.apiEnabled && apiStatus.hasToken && apiStatus.addAccountType === 'day' && apiStatus.addAccountResetTime">
+          <div>重置时间</div>
+          <div>{{ apiStatus.addAccountResetTime }}</div>
+        </div>
+      </div>
+      <div v-else style="padding: 20px; color: var(--regular-text-color);">
+        无法获取API使用情况
+      </div>
+    </div>
     <div class="del-email" v-perm="'my:delete'">
       <div class="title">{{$t('deleteUser')}}</div>
       <div style="color: var(--regular-text-color);">
@@ -49,13 +98,14 @@
   </div>
 </template>
 <script setup>
-import {reactive, ref, defineOptions} from 'vue'
+import {reactive, ref, defineOptions, onMounted} from 'vue'
 import {resetPassword, userDelete} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
 import {accountSetName} from "@/request/account.js";
 import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
+import http from '@/axios/index.js';
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
@@ -63,9 +113,31 @@ const userStore = useUserStore();
 const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
+const apiStatus = ref(null)
+const apiStatusLoading = ref(false)
 
 defineOptions({
   name: 'setting'
+})
+
+// 获取API使用情况
+async function fetchApiStatus() {
+  apiStatusLoading.value = true
+  try {
+    // 使用JWT Token调用API(通过axios interceptor自动添加)
+    // axios拦截器已经返回data.data,所以response就是我们需要的数据
+    const response = await http.get('/my/apiStatus')
+    apiStatus.value = response
+  } catch (error) {
+    console.error('Failed to fetch API status:', error)
+  } finally {
+    apiStatusLoading.value = false
+  }
+}
+
+onMounted(() => {
+  // 页面加载时获取API状态
+  fetchApiStatus()
 })
 
 function showSetName() {

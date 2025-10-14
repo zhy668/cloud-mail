@@ -118,7 +118,7 @@ app.use('*', async (c, next) => {
 	}
 
 	// 检查是否是用户API Token认证的路径
-	const userApiPaths = ['/user/account/', '/user/email/'];
+	const userApiPaths = ['/user/account/', '/user/email/', '/user/api/'];
 	const isUserApiPath = userApiPaths.some(apiPath => path.startsWith(apiPath));
 
 	if (isUserApiPath) {

@@ -64,7 +64,29 @@ Content-Type: application/json
 }
 ```
 
-##### 3. 查询用户邮箱列表
+##### 3. 查询API使用情况
+```bash
+GET /api/user/api/status
+Authorization: <user-api-token>
+
+# 响应
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "hasToken": true,              // 是否已生成Token
+    "apiEnabled": true,            // 角色是否允许使用API
+    "isAdmin": false,              // 是否是管理员
+    "addAccountType": "day",       // 限制类型: ban/count/day
+    "addAccountLimit": 10,         // 限制次数
+    "addAccountUsed": 3,           // 已使用次数
+    "addAccountRemaining": 7,      // 剩余次数 (-1表示无限制)
+    "addAccountResetTime": "2025-10-14"  // 重置时间(day类型)
+  }
+}
+```
+
+##### 4. 查询用户邮箱列表
 ```bash
 GET /api/user/account/list
 Authorization: <user-api-token>
@@ -83,7 +105,7 @@ Authorization: <user-api-token>
 }
 ```
 
-##### 4. 添加邮箱
+##### 5. 添加邮箱
 ```bash
 POST /api/user/account/add
 Authorization: <user-api-token>
@@ -103,7 +125,7 @@ Content-Type: application/json
 }
 ```
 
-##### 5. 删除邮箱
+##### 6. 删除邮箱
 ```bash
 DELETE /api/user/account/delete?accountId=2
 Authorization: <user-api-token>
@@ -115,7 +137,7 @@ Authorization: <user-api-token>
 }
 ```
 
-##### 6. 查询邮件列表
+##### 7. 查询邮件列表
 ```bash
 POST /api/user/email/list
 Authorization: <user-api-token>
