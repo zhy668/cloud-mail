@@ -45,6 +45,7 @@ const apiTokenService = {
 
 		// 非管理员需要检查API权限
 		if (!adminUtils.isAdmin(c, userRow.email) && roleRow.enableApi !== 1) {
+			console.log(`[API Permission Denied] User: ${userRow.email}, Role: ${roleRow.name}, EnableApi: ${roleRow.enableApi}`);
 			throw new BizError(t('apiPermissionDenied'), 403);
 		}
 
@@ -94,6 +95,7 @@ const apiTokenService = {
 
 					// 非管理员需要检查API权限
 					if (!adminUtils.isAdmin(c, userRow.email) && (!roleRow || roleRow.enableApi !== 1)) {
+						console.log(`[API Token Verify Failed] User: ${userRow.email}, Role: ${roleRow?.name || 'N/A'}, EnableApi: ${roleRow?.enableApi || 'N/A'}`);
 						return null;
 					}
 
@@ -120,6 +122,7 @@ const apiTokenService = {
 
 			// 非管理员需要检查API权限
 			if (!adminUtils.isAdmin(c, userRow.email) && (!roleRow || roleRow.enableApi !== 1)) {
+				console.log(`[API Token Verify Failed] User: ${userRow.email}, Role: ${roleRow?.name || 'N/A'}, EnableApi: ${roleRow?.enableApi || 'N/A'}`);
 				return null;
 			}
 
@@ -246,6 +249,7 @@ const apiTokenService = {
 
 		// 检查是否超过限制
 		if (userRow.apiAddCount >= roleRow.apiAddAccountCount) {
+			console.log(`[API Add Account Limit] User: ${userRow.email}, Type: ${roleRow.apiAddAccountType}, Count: ${userRow.apiAddCount}/${roleRow.apiAddAccountCount}`);
 			if (roleRow.apiAddAccountType === 'day') {
 				throw new BizError(t('apiAddAccountDayLimit'), 403);
 			} else if (roleRow.apiAddAccountType === 'count') {
