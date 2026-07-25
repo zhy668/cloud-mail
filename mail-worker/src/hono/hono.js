@@ -3,7 +3,7 @@ const app = new Hono();
 
 import result from '../model/result';
 import { cors } from 'hono/cors';
-import initService from '../init/init';
+import { ensureCurrentSchema } from '../init/schema';
 
 let schemaEnsured = false;
 let schemaEnsurePromise = null;
@@ -14,7 +14,7 @@ async function ensureSchema(c) {
 	}
 
 	if (!schemaEnsurePromise) {
-		schemaEnsurePromise = initService.ensureCurrentSchema(c)
+		schemaEnsurePromise = ensureCurrentSchema(c)
 			.then(() => {
 				schemaEnsured = true;
 			})
