@@ -19,9 +19,6 @@ id = "${KV_NAMESPACE_ID}" # 使用占位符引用环境变量
 binding = "r2"
 bucket_name = "${R2_BUCKET_NAME}" # 使用占位符引用环境变量
 
-[ai]
-binding = "ai"
-
 [assets]
 binding = "assets"		#静态资源绑定名默认不可修改
 directory = "./dist"	#前端vue项目打包的静态资源存放位置,默认dist
@@ -39,4 +36,4 @@ crons = ["0 16 * * *"]	#定时任务每天晚上12点执行
 #jwt_secret = ""			#jwt令牌的密钥,随便填一串字符串
 
 [build]
-command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"
+command = "pnpm --prefix ../mail-vue install --frozen-lockfile && pnpm --prefix ../mail-vue run build"
