@@ -45,4 +45,4 @@ crons = ["0 16 * * *"]
 #linuxdo_callback_url = ""
 
 [build]
-command = "npm --prefix ../mail-vue run build"
+command = "pnpm --prefix ../mail-vue install --frozen-lockfile && pnpm --prefix ../mail-vue run build"
