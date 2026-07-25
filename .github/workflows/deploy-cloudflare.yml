@@ -2,7 +2,7 @@ name: 🚀 Deploy cloud-mail to Cloudflare Workers
 
 on:
   push:
-    branches: [ main ]
+    branches: [ SMTP2GO-enhanced, main ]
     paths:
       - "mail-worker/**"
       - "mail-vue/**"
