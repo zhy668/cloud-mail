@@ -18,7 +18,7 @@ const accountService = {
 
 	async add(c, params, userId) {
 
-		const {addEmailVerify , addEmail, manyEmail, addVerifyCount} = await settingService.query(c);
+		const {addEmailVerify , addEmail, manyEmail, addVerifyCount, minEmailPrefix, emailPrefixFilter} = await settingService.query(c);
 
 		let { email, token } = params;
 
@@ -38,6 +38,14 @@ const accountService = {
 
 		if (!c.env.domain.includes(emailUtils.getDomain(email))) {
 			throw new BizError(t('notExistDomain'));
+if (minEmailPrefix && emailUtils.getName(email).length < minEmailPrefix) {
+throw new BizError(t('minEmailPrefix') || ('Email prefix too short, min: ' + minEmailPrefix));
+}
+const prefixFilters = Array.isArray(emailPrefixFilter) ? emailPrefixFilter : (emailPrefixFilter ? String(emailPrefixFilter).split(',').filter(Boolean) : []);
+if (prefixFilters.some(content => emailUtils.getName(email).includes(content))) {
+throw new BizError(t('emailPrefixFilter') || 'Email prefix not allowed');
+}
+
 		}
 
 

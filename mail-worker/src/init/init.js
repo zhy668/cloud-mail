@@ -9,7 +9,7 @@ const init = {
 		const secret = c.req.param('secret');
 
 		if (secret !== c.env.jwt_secret) {
-			return c.text(t('JWTMismatch'));
+			return c.text(t('JWTMismatch'), 401);
 		}
 
 		await this.intDB(c);
@@ -23,6 +23,8 @@ const init = {
 		await this.v1_7DB(c);
 		await this.v2DB(c);
 		await this.v2_1DB(c);
+		await this.v3DB(c);
+		await this.v3_1DB(c);
 		await settingService.refresh(c);
 		return c.text(t('initSuccess'));
 	},
@@ -42,7 +44,74 @@ const init = {
 		}
 	},
 
-	async v2_1DB(c) {
+
+async v3DB(c) {
+// upstream v3: AI code + blacklist + related setting fields
+try {
+await c.env.db.batch([
+c.env.db.prepare(`ALTER TABLE email ADD COLUMN code TEXT NOT NULL DEFAULT '';`),
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN ai_code INTEGER NOT NULL DEFAULT 1;`),
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN ai_code_filter TEXT NOT NULL DEFAULT '';`)
+]);
+} catch (e) {
+console.warn('skip ai code fields: ' + e.message);
+}
+
+try {
+await c.env.db.batch([
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN black_subject TEXT NOT NULL DEFAULT '';`),
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN black_content TEXT NOT NULL DEFAULT '';`),
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN black_from TEXT NOT NULL DEFAULT '';`)
+]);
+} catch (e) {
+console.warn('skip blacklist fields: ' + e.message);
+}
+
+try {
+await c.env.db.batch([
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN force_path_style INTEGER NOT NULL DEFAULT 1;`),
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN custom_domain TEXT NOT NULL DEFAULT '';`),
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN tg_msg_to TEXT NOT NULL DEFAULT 'show';`),
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN tg_msg_from TEXT NOT NULL DEFAULT 'only-name';`),
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN tg_msg_text TEXT NOT NULL DEFAULT 'hide';`),
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN min_email_prefix INTEGER NOT NULL DEFAULT 0;`),
+c.env.db.prepare(`ALTER TABLE setting ADD COLUMN email_prefix_filter TEXT NOT NULL DEFAULT '';`)
+]);
+} catch (e) {
+console.warn('skip v3 extra setting fields: ' + e.message);
+}
+},
+
+
+async v3_1DB(c) {
+try {
+await c.env.db.prepare(`CREATE TABLE IF NOT EXISTS oauth (
+oauth_id INTEGER PRIMARY KEY AUTOINCREMENT,
+oauth_user_id TEXT,
+username TEXT,
+name TEXT,
+avatar TEXT,
+active INTEGER,
+trust_level INTEGER,
+silenced INTEGER,
+create_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+user_id INTEGER NOT NULL DEFAULT 0
+)`).run();
+} catch (e) {
+console.warn('skip oauth table: ' + e.message);
+}
+
+try {
+await c.env.db.batch([
+c.env.db.prepare(`ALTER TABLE email ADD COLUMN unread INTEGER NOT NULL DEFAULT 0;`),
+c.env.db.prepare(`UPDATE email SET unread = 1;`)
+]);
+} catch (e) {
+console.warn('skip unread field: ' + e.message);
+}
+},
+
+async v2_1DB(c) {
 		// Add SMTP2GO support fields
 		try {
 			await c.env.db.batch([
@@ -95,8 +164,8 @@ const init = {
 			`ALTER TABLE setting ADD COLUMN notice_width INTEGER NOT NULL DEFAULT 340;`,
 			`ALTER TABLE setting ADD COLUMN notice INTEGER NOT NULL DEFAULT 0;`,
 			`ALTER TABLE setting ADD COLUMN no_recipient INTEGER NOT NULL DEFAULT 1;`,
-			`UPDATE role SET avail_domain = '' WHERE role.avail_domain LIKE '@%';`,
-			`UPDATE role SET ban_email = '';`,
+			`UPDATE role SET avail_domain = SUBSTR(avail_domain, 2) WHERE role.avail_domain LIKE '@%';`,
+			`UPDATE role SET ban_email = '' WHERE ban_email IS NULL;`,
 			`CREATE INDEX IF NOT EXISTS idx_email_user_id_account_id ON email(user_id, account_id);`
 		];
 
@@ -290,10 +359,6 @@ const init = {
 			`ALTER TABLE user ADD COLUMN api_add_count INTEGER NOT NULL DEFAULT 0;`,
 			`ALTER TABLE user ADD COLUMN api_add_reset_time TEXT;`,
 
-			`ALTER TABLE role ADD COLUMN enable_api INTEGER NOT NULL DEFAULT 1;`,
-			`ALTER TABLE role ADD COLUMN api_add_account_count INTEGER;`,
-			`ALTER TABLE role ADD COLUMN api_add_account_type TEXT NOT NULL DEFAULT 'ban';`,
-
 			`ALTER TABLE attachments ADD COLUMN status INTEGER NOT NULL DEFAULT 0;`,
 			`ALTER TABLE attachments ADD COLUMN type INTEGER NOT NULL DEFAULT 0;`
 		];
@@ -370,11 +435,16 @@ const init = {
         description TEXT,
         user_id INTEGER,
         is_default INTEGER DEFAULT 0,
-        send_count INTEGER,
-        send_type TEXT NOT NULL DEFAULT 'count',
-        account_count INTEGER
+	        send_count INTEGER,
+	        send_type TEXT NOT NULL DEFAULT 'count',
+	        account_count INTEGER,
+	        enable_api INTEGER NOT NULL DEFAULT 1,
+	        api_add_account_count INTEGER,
+	        api_add_account_type TEXT NOT NULL DEFAULT 'ban'
       )
     `).run();
+
+			await this.ensureRoleApiColumns(c);
 
 		const { roleCount } = await c.env.db.prepare(`SELECT COUNT(*) as roleCount FROM role`).first();
 		if (roleCount === 0) {
@@ -412,6 +482,31 @@ const init = {
       `).run();
 		}
 	},
+
+		async ensureRoleApiColumns(c) {
+			const { results } = await c.env.db.prepare(`SELECT name FROM pragma_table_info('role')`).all();
+			const columnNames = new Set(results.map(row => row.name));
+			const addColumns = [
+				{
+					name: 'enable_api',
+					sql: `ALTER TABLE role ADD COLUMN enable_api INTEGER NOT NULL DEFAULT 1;`
+				},
+				{
+					name: 'api_add_account_count',
+					sql: `ALTER TABLE role ADD COLUMN api_add_account_count INTEGER;`
+				},
+				{
+					name: 'api_add_account_type',
+					sql: `ALTER TABLE role ADD COLUMN api_add_account_type TEXT NOT NULL DEFAULT 'ban';`
+				}
+			];
+
+			for (const column of addColumns) {
+				if (!columnNames.has(column.name)) {
+					await c.env.db.prepare(column.sql).run();
+				}
+			}
+		},
 
 	async intDB(c) {
 		// 初始化数据库表结构

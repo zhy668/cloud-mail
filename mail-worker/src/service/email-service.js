@@ -218,12 +218,15 @@ const emailService = {
 		const resendToken = resendTokens[domain];
 		const smtp2goToken = smtp2goTokens[domain];
 
-		// Determine which email service to use
-		// Priority: Resend first, then SMTP2GO
+		const useCloudflareEmail = !!c.env.email;
+
+		// Priority: Cloudflare Email > Resend > SMTP2GO
 		let useResend = false;
 		let useSmtp2go = false;
 
-		if (resendToken) {
+		if (useCloudflareEmail) {
+			// CF email takes priority
+		} else if (resendToken) {
 			useResend = true;
 		} else if (smtp2goToken) {
 			useSmtp2go = true;
@@ -251,8 +254,37 @@ const emailService = {
 		}
 
 		let emailResult = null;
+		let useCloudflareEmailResult = false;
 
-		if (useResend) {
+		if (useCloudflareEmail) {
+			useCloudflareEmailResult = true;
+			if (manyType === 'divide') {
+				const results = await Promise.all(receiveEmail.map(email => this.sendByCloudflareEmail(c, {
+					name,
+					accountEmail: accountRow.email,
+					receiveEmail: [email],
+					subject,
+					text,
+					html,
+					attachments: attachments || [],
+					sendType,
+					messageId: emailRow.messageId
+				})));
+				emailResult = { data: { ids: results.map(item => item.data.id) } };
+			} else {
+				emailResult = await this.sendByCloudflareEmail(c, {
+					name,
+					accountEmail: accountRow.email,
+					receiveEmail: Array.isArray(receiveEmail) ? receiveEmail : [receiveEmail],
+					subject,
+					text,
+					html,
+					attachments: attachments || [],
+					sendType,
+					messageId: emailRow.messageId
+				});
+			}
+		} else if (useResend) {
 			// Use Resend service
 			const resend = new Resend(resendToken);
 
@@ -361,7 +393,13 @@ const emailService = {
 		// Handle different response formats
 		let emailIds = [];
 
-		if (useResend) {
+		if (useCloudflareEmailResult) {
+			const { data, error } = emailResult;
+			if (error) {
+				throw new BizError(error.message);
+			}
+			emailIds = data.ids || [data.id];
+} else if (useResend) {
 			const { data, error } = emailResult;
 
 			if (error) {
@@ -401,7 +439,7 @@ const emailService = {
 		emailData.accountId = accountId;
 		emailData.type = emailConst.type.SEND;
 		emailData.userId = userId;
-		emailData.status = emailConst.status.SENT;
+		emailData.status = useCloudflareEmailResult ? emailConst.status.DELIVERED : emailConst.status.SENT;
 
 		const emailDataList = [];
 
@@ -701,11 +739,23 @@ const emailService = {
 	},
 
 	async completeReceive(c, status, emailId) {
-		return await orm(c).update(email).set({
-			isDel: isDel.NORMAL,
-			status: status
-		}).where(eq(email.emailId, emailId)).returning().get();
-	},
+return await orm(c).update(email).set({
+isDel: isDel.NORMAL,
+status: status
+}).where(eq(email.emailId, emailId)).returning().get();
+},
+
+async read(c, params, userId) {
+const { emailIds } = params;
+const ids = Array.isArray(emailIds) ? emailIds : String(emailIds || '').split(',').map(Number).filter(Boolean);
+if (ids.length === 0) return;
+await orm(c).update(email).set({ unread: emailConst.unread.READ }).where(and(eq(email.userId, userId), inArray(email.emailId, ids)));
+},
+
+async completeReceiveAll(c) {
+await c.env.db.prepare(`UPDATE email as e SET status = ${emailConst.status.RECEIVE} WHERE status = ${emailConst.status.SAVING} AND EXISTS (SELECT 1 FROM account WHERE account_id = e.account_id)`).run();
+await c.env.db.prepare(`UPDATE email as e SET status = ${emailConst.status.NOONE} WHERE status = ${emailConst.status.SAVING} AND NOT EXISTS (SELECT 1 FROM account WHERE account_id = e.account_id)`).run();
+},
 
 	async batchDelete(c, params) {
 		let { sendName, sendEmail, toEmail, subject, startTime, endTime, type  } = params
@@ -751,7 +801,108 @@ const emailService = {
 		await attService.removeByEmailIds(c, emailIds);
 
 		await orm(c).delete(email).where(conditions.length > 1 ? and(...conditions) : conditions[0]).run();
-	}
+	},
+
+async sendByCloudflareEmail(c, params) {
+const sendForm = {
+from: { email: params.accountEmail, name: params.name },
+to: [...params.receiveEmail],
+subject: params.subject
 };
+
+if (params.text) {
+sendForm.text = params.text;
+}
+
+if (params.html) {
+sendForm.html = params.html;
+}
+
+const attachments = await this.toCloudflareAttachments(params.attachments);
+if (attachments.length > 0) {
+sendForm.attachments = attachments;
+}
+
+if (params.sendType === 'reply' && params.messageId) {
+sendForm.headers = {
+'in-reply-to': params.messageId,
+'references': params.messageId
+};
+}
+
+const result = await c.env.email.send(sendForm);
+
+return {
+data: {
+id: result.messageId
+}
+};
+},
+
+async toCloudflareAttachments(attachments) {
+const arrayBufferAttachments = await this.toArrayBufferAttachments(attachments || []);
+
+return arrayBufferAttachments.map(attachment => {
+const item = {
+content: attachment.content,
+filename: attachment.filename,
+type: attachment.mimeType || attachment.contentType || attachment.type || 'application/octet-stream',
+disposition: attachment.contentId ? 'inline' : 'attachment'
+};
+
+if (attachment.contentId) {
+item.contentId = String(attachment.contentId).replace(/^<|>$/g, '');
+}
+
+return item;
+});
+},
+
+async toArrayBufferAttachments(attachments = []) {
+const result = [];
+
+for (const attachment of attachments) {
+const content = await this.toAttachmentArrayBuffer(attachment);
+if (!content) {
+continue;
+}
+result.push({ ...attachment, content });
+}
+
+return result;
+},
+
+async toAttachmentArrayBuffer(attachment) {
+let content = attachment.content;
+
+if (!content) {
+return null;
+}
+
+if (content instanceof ArrayBuffer) {
+return content;
+}
+
+if (content instanceof Uint8Array) {
+return content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength);
+}
+
+if (typeof content === 'string') {
+if (content.startsWith('data:')) {
+content = content.split(',')[1] || content;
+}
+const binary = atob(content.replace(/\s+/g, ''));
+const bytes = new Uint8Array(binary.length);
+for (let i = 0; i < binary.length; i++) {
+bytes[i] = binary.charCodeAt(i);
+}
+return bytes.buffer;
+}
+
+return content;
+}
+
+};
+
 
 export default emailService;

@@ -22,11 +22,16 @@ import verifyRecordService from './verify-record-service';
 
 const loginService = {
 
-	async register(c, params) {
+	async register(c, params, oauth = false) {
 
 		const { email, password, token, code } = params;
 
-		const {regKey, register, registerVerify, regVerifyCount} = await settingService.query(c)
+		let {regKey, register, registerVerify, regVerifyCount, minEmailPrefix, emailPrefixFilter} = await settingService.query(c)
+
+if (oauth) {
+registerVerify = settingConst.registerVerify.CLOSE;
+register = settingConst.register.OPEN;
+}
 
 
 		if (register === settingConst.register.CLOSE) {
@@ -188,11 +193,11 @@ const loginService = {
 		return { type: regKeyRow.roleId, regKeyId: regKeyRow.regKeyId };
 	},
 
-	async login(c, params) {
+	async login(c, params, oauth = false) {
 
 		const { email, password } = params;
 
-		if (!email || !password) {
+		if (!email || (!oauth && !password)) {
 			throw new BizError(t('emailAndPwdEmpty'));
 		}
 
@@ -210,7 +215,7 @@ const loginService = {
 			throw new BizError(t('isBanUser'));
 		}
 
-		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
+		if (!oauth && !await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
 			throw new BizError(t('IncorrectPwd'));
 		}
 

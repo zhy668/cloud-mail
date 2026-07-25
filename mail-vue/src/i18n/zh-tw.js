@@ -299,6 +299,17 @@ const zhTW = {
     s3Configuration: 'S3 設定',
     confirmDeletionOfContacts: '確認清除這些聯絡人嗎？',
     recentContacts: '最近聯絡人',
-    selectContacts: '選中'
+    selectContacts: '選中',
+    codeLabel: '驗證碼：',
+    copyCode: '複製驗證碼',
+    blackList: '郵件黑名單',
+    blackListDesc: '拒收包含以下資訊的郵件',
+    blackSubjectDesc: '郵件標題',
+    blackContentDesc: '郵件內容',
+    blackFromDesc: '寄件人郵箱或域名',
+    codeRecognition: '識別驗證碼',
+    codeRecognitionRules: '驗證碼識別規則',
+    codeRecognitionRulesDesc: '僅對匹配的寄件人/域名識別驗證碼，留空表示全部識別',
+    senderRules: '寄件人規則'
 }
 export default zhTW

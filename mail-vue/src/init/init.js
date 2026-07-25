@@ -28,45 +28,50 @@ export async function init() {
 
     i18n.global.locale.value = settingStore.lang
 
-    let setting = null;
+	let setting = null;
 
-    if (token) {
-        const userPromise = loginUserInfo().catch(e => {
-            console.error(e);
-            return null;
-        });
+	try {
+		if (token) {
+			const userPromise = loginUserInfo().catch(e => {
+				console.error(e);
+				return null;
+			});
 
-        const [s, user] = await Promise.all([websiteConfig(), userPromise]);
-        setting = s;
-        settingStore.settings = setting;
-        settingStore.domainList = setting.domainList;
-        document.title = setting.title;
+			const [s, user] = await Promise.all([websiteConfig(), userPromise]);
+			setting = s;
+			settingStore.settings = setting;
+			settingStore.domainList = setting.domainList;
+			document.title = setting.title;
 
-        if (user) {
-            accountStore.currentAccountId = user.accountId;
-            userStore.user = user;
+			if (user) {
+				accountStore.currentAccountId = user.accountId;
+				userStore.user = user;
 
-            const routers = permsToRouter(user.permKeys);
-            routers.forEach(routerData => {
-                router.addRoute('layout', routerData);
-            });
-        }
+				const routers = permsToRouter(user.permKeys);
+				routers.forEach(routerData => {
+					router.addRoute('layout', routerData);
+				});
+			}
 
-    } else {
-        setting = await websiteConfig();
-        settingStore.settings = setting;
-        settingStore.domainList = setting.domainList;
-        document.title = setting.title;
-    }
-
-    removeLoading();
+		} else {
+			setting = await websiteConfig();
+			settingStore.settings = setting;
+			settingStore.domainList = setting.domainList;
+			document.title = setting.title;
+		}
+	} catch (e) {
+		console.error(e);
+	} finally {
+		removeLoading();
+	}
 }
 
 function removeLoading() {
     if (window.innerWidth < 1025) {
         document.documentElement.style.setProperty('--loading-hide-transition', 'none')
     }
-    const doc = document.getElementById('loading-first');
+	const doc = document.getElementById('loading-first');
+	if (!doc) return;
     doc.classList.add('loading-hide')
     setTimeout(() => {
         doc.remove()

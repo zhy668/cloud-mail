@@ -1,4 +1,4 @@
-﻿import app from '../hono/hono';
+import app from '../hono/hono';
 import userService from '../service/user-service';
 import accountService from '../service/account-service';
 import result from '../model/result';

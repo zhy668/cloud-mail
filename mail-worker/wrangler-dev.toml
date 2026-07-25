@@ -23,7 +23,21 @@ id = "2io01d4b299e481b9de060ece9e7785c"
 #bucket_name = "email"
 
 
+[ai]
+binding = "ai"
+
+#[[send_email]]
+#name = "email"
+
+[assets]
+binding = "assets"
+directory = "./dist"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
 [vars]
+#analysis_cache = false
+#ai_model = ""
 orm_log = false
 domain = ["example.com", "example2.com", "example3.com", "example4.com"]
 admin = "admin@example.com"

@@ -299,7 +299,18 @@ const en = {
     s3Configuration: 'S3 Configuration',
     confirmDeletionOfContacts: 'Confirm clearing contacts?',
     recentContacts: 'Recent contacts',
-    selectContacts: 'Select'
+    selectContacts: 'Select',
+    codeLabel: 'Code: ',
+    copyCode: 'Copy code',
+    blackList: 'Email blacklist',
+    blackListDesc: 'Reject emails containing the following',
+    blackSubjectDesc: 'Subject',
+    blackContentDesc: 'Content',
+    blackFromDesc: 'Sender email or domain',
+    codeRecognition: 'Verification code recognition',
+    codeRecognitionRules: 'Code recognition rules',
+    codeRecognitionRulesDesc: 'Only extract codes from matched senders/domains. Empty means all',
+    senderRules: 'Sender rules'
 }
 
 export default en

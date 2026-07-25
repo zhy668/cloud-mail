@@ -45,7 +45,12 @@ const settingService = {
 		}
 
 		domainList = domainList.map(item => '@' + item);
-		setting.domainList = domainList;
+setting.domainList = domainList;
+if (typeof setting.emailPrefixFilter === 'string') {
+setting.emailPrefixFilter = setting.emailPrefixFilter.split(',').filter(Boolean);
+} else if (!setting.emailPrefixFilter) {
+setting.emailPrefixFilter = [];
+}
 		c.set?.('setting', setting);
 		return setting;
 	},
@@ -75,6 +80,8 @@ const settingService = {
 		settingRow.s3AccessKey = settingRow.s3AccessKey ? `${settingRow.s3AccessKey.slice(0, 12)}******` : null;
 		settingRow.s3SecretKey = settingRow.s3SecretKey ? `${settingRow.s3SecretKey.slice(0, 12)}******` : null;
 		settingRow.hasR2 = !!c.env.r2
+		settingRow.hasCfEmail = !!c.env.email
+		settingRow.hasAi = !!c.env.ai
 
 		let regVerifyOpen = false
 		let addVerifyOpen = false
@@ -95,7 +102,13 @@ const settingService = {
 	},
 
 	async set(c, params) {
-		const settingData = await this.query(c);
+const settingData = await this.query(c);
+if (Array.isArray(params.emailPrefixFilter)) {
+params.emailPrefixFilter = params.emailPrefixFilter + '';
+}
+if (Array.isArray(params.aiCodeFilter)) {
+params.aiCodeFilter = params.aiCodeFilter + '';
+}
 
 		// Handle resendTokens
 		if (params.resendTokens) {
@@ -191,7 +204,10 @@ const settingService = {
 			noticeWidth: settingRow.noticeWidth,
 			noticeOffset: settingRow.noticeOffset,
 			notice: settingRow.notice,
-			loginDomain: settingRow.loginDomain
+			loginDomain: settingRow.loginDomain,
+linuxdoSwitch: !!(c.env.linuxdo_client_id && c.env.linuxdo_client_secret && c.env.linuxdo_callback_url),
+linuxdoClientId: c.env.linuxdo_client_id || '',
+linuxdoCallbackUrl: c.env.linuxdo_callback_url || ''
 		};
 	}
 };

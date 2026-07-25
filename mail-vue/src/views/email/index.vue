@@ -27,7 +27,7 @@ import {useSettingStore} from "@/store/setting.js";
 import emailScroll from "@/components/email-scroll/index.vue"
 import {emailList, emailDelete, emailLatest} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
-import {defineOptions, onMounted, reactive, ref, watch} from "vue";
+import {defineOptions, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref, watch} from "vue";
 import {sleep} from "@/utils/time-utils.js";
 import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
@@ -43,10 +43,24 @@ const scroll = ref({})
 const params = reactive({
   timeSort: 0,
 })
+let latestLoopStopped = false
+let latestLoopActive = true
 
 onMounted(() => {
   emailStore.emailScroll = scroll;
   latest()
+})
+
+onActivated(() => {
+  latestLoopActive = true
+})
+
+onDeactivated(() => {
+  latestLoopActive = false
+})
+
+onBeforeUnmount(() => {
+  latestLoopStopped = true
 })
 
 
@@ -70,10 +84,17 @@ function jumpContent(email) {
 const existIds = new Set();
 
 async function latest() {
-  while (true) {
+  while (!latestLoopStopped) {
+    const autoRefreshTime = Number(settingStore.settings.autoRefreshTime) || 0
+
+    if (!latestLoopActive || autoRefreshTime <= 0) {
+      await sleep(1000)
+      continue
+    }
+
     const latestId = scroll.value.latestEmail?.emailId || 0
 
-    if (!scroll.value.firstLoad && settingStore.settings.autoRefreshTime) {
+    if (!scroll.value.firstLoad) {
       try {
         const accountId = accountStore.currentAccountId
         const curTimeSort = params.timeSort
@@ -93,7 +114,7 @@ async function latest() {
         console.error(e)
       }
     }
-    await sleep(settingStore.settings.autoRefreshTime * 1000)
+    await sleep(autoRefreshTime * 1000)
   }
 }
 

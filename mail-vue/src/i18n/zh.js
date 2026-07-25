@@ -299,6 +299,17 @@ const zh = {
     s3Configuration: 'S3 配置',
     confirmDeletionOfContacts: '确认清除这些联系人吗？',
     recentContacts: '最近联系人',
-    selectContacts: '选中'
+    selectContacts: '选中',
+    codeLabel: '验证码：',
+    copyCode: '复制验证码',
+    blackList: '邮件黑名单',
+    blackListDesc: '拒收包含以下信息的邮件',
+    blackSubjectDesc: '邮件标题',
+    blackContentDesc: '邮件内容',
+    blackFromDesc: '发件人邮箱或域名',
+    codeRecognition: '识别验证码',
+    codeRecognitionRules: '验证码识别规则',
+    codeRecognitionRulesDesc: '仅对匹配的发件人/域名识别验证码，留空表示全部识别',
+    senderRules: '发件人规则'
 }
 export default zh

@@ -1,4 +1,4 @@
-﻿import http from '@/axios/index.js'
+import http from '@/axios/index.js'
 
 
 export function userList(params) {

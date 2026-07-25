@@ -1,4 +1,4 @@
-﻿import BizError from '../error/biz-error';
+import BizError from '../error/biz-error';
 import constant from '../const/constant';
 import jwtUtils from '../utils/jwt-utils';
 import KvConst from '../const/kv-const';
@@ -11,219 +11,219 @@ import adminUtils from '../utils/admin-utils';
 import apiTokenService from '../service/api-token-service';
 
 const exclude = [
-	'/login',
-	'/register',
-	'/file',
-	'/setting/websiteConfig',
-	'/webhooks',
-	'/init',
-	'/public/genToken',
-	'/inbound',
-	'/user/token/generate',
-	'/user/token/revoke'
+'/login',
+'/register',
+'/file',
+'/oss',
+'/setting/websiteConfig',
+'/webhooks',
+'/init',
+'/public/genToken',
+'/inbound',
+'/telegram',
+'/oauth',
+'/test',
+'/user/token/generate',
+'/user/token/revoke'
 ];
 
 const requirePerms = [
-	'/email/send',
-	'/email/delete',
-	'/account/list',
-	'/account/delete',
-	'/account/add',
-	'/my/delete',
-	'/role/add',
-	'/role/list',
-	'/role/delete',
-	'/role/tree',
-	'/role/set',
-	'/role/setDefault',
-	'/allEmail/list',
-	'/allEmail/delete',
-	'/setting/setBackground',
-	'/setting/set',
-	'/setting/query',
-	'/user/delete',
-	'/user/setPwd',
-	'/user/setStatus',
-	'/user/setType',
-	'/user/list',
-	'/user/resetSendCount',
-	'/user/admin/delete',
-	'/user/admin/batchDelete',
-	'/user/admin/account/add',
-	'/user/admin/account/delete',
-	'/regKey/add',
-	'/regKey/list',
-	'/regKey/delete',
-	'/regKey/clearNotUse',
-	'/regKey/history'
+'/email/send',
+'/email/delete',
+'/account/list',
+'/account/delete',
+'/account/add',
+'/my/delete',
+'/analysis/echarts',
+'/role/add',
+'/role/list',
+'/role/delete',
+'/role/tree',
+'/role/set',
+'/role/setDefault',
+'/allEmail/list',
+'/allEmail/delete',
+'/allEmail/batchDelete',
+'/allEmail/latest',
+'/setting/setBackground',
+'/setting/deleteBackground',
+'/setting/set',
+'/setting/query',
+'/setting/setBlacklist',
+'/user/delete',
+'/user/setPwd',
+'/user/setStatus',
+'/user/setType',
+'/user/list',
+'/user/restore',
+'/user/resetSendCount',
+'/user/add',
+'/user/deleteAccount',
+'/user/allAccount',
+'/user/admin/delete',
+'/user/admin/batchDelete',
+'/user/admin/account/add',
+'/user/admin/account/delete',
+'/regKey/add',
+'/regKey/list',
+'/regKey/delete',
+'/regKey/clearNotUse',
+'/regKey/history'
 ];
 
 const premKey = {
-	'email:delete': ['/email/delete'],
-	'email:send': ['/email/send'],
-	'account:add': ['/account/add','/user/admin/account/add'],
-	'account:query': ['/account/list'],
-	'account:delete': ['/account/delete','/user/admin/account/delete'],
-	'my:delete': ['/my/delete'],
-	'role:add': ['/role/add'],
-	'role:set': ['/role/set','/role/setDefault'],
-	'role:query': ['/role/list', '/role/tree'],
-	'role:delete': ['/role/delete'],
-	'user:query': ['/user/list'],
-	'user:add': ['/user/add'],
-	'user:reset-send': ['/user/resetSendCount'],
-	'user:set-pwd': ['/user/setPwd'],
-	'user:set-status': ['/user/setStatus'],
-	'user:set-type': ['/user/setType'],
-	'user:delete': ['/user/delete','/user/admin/delete','/user/admin/batchDelete'],
-	'all-email:query': ['/allEmail/list'],
-	'all-email:delete': ['/allEmail/delete','/allEmail/batchDelete'],
-	'setting:query': ['/setting/query'],
-	'setting:set': ['/setting/set', '/setting/setBackground'],
-	'analysis:query': ['/analysis/echarts'],
-	'reg-key:add': ['/regKey/add'],
-	'reg-key:query': ['/regKey/list','/regKey/history'],
-	'reg-key:delete': ['/regKey/delete','/regKey/clearNotUse'],
+'email:delete': ['/email/delete'],
+'email:send': ['/email/send'],
+'account:add': ['/account/add','/user/admin/account/add'],
+'account:query': ['/account/list'],
+'account:delete': ['/account/delete','/user/admin/account/delete'],
+'my:delete': ['/my/delete'],
+'role:add': ['/role/add'],
+'role:set': ['/role/set','/role/setDefault'],
+'role:query': ['/role/list', '/role/tree'],
+'role:delete': ['/role/delete'],
+'user:query': ['/user/list','/user/allAccount'],
+'user:add': ['/user/add'],
+'user:reset-send': ['/user/resetSendCount'],
+'user:set-pwd': ['/user/setPwd'],
+'user:set-status': ['/user/setStatus', '/user/restore'],
+'user:set-type': ['/user/setType'],
+'user:delete': ['/user/delete','/user/deleteAccount','/user/admin/delete','/user/admin/batchDelete'],
+'all-email:query': ['/allEmail/list','/allEmail/latest'],
+'all-email:delete': ['/allEmail/delete','/allEmail/batchDelete'],
+'setting:query': ['/setting/query'],
+'setting:set': ['/setting/set', '/setting/setBackground','/setting/deleteBackground','/setting/setBlacklist'],
+'analysis:query': ['/analysis/echarts'],
+'reg-key:add': ['/regKey/add'],
+'reg-key:query': ['/regKey/list','/regKey/history'],
+'reg-key:delete': ['/regKey/delete','/regKey/clearNotUse'],
 };
 
 app.use('*', async (c, next) => {
 
-	const path = c.req.path;
+const path = c.req.path;
 
-	console.log('[Security] Path:', path);
+const index = exclude.findIndex(item => {
+return path.startsWith(item);
+});
 
-	if (path.startsWith('/test')) {
-		return await next();
-	}
+if (index > -1) {
+return await next();
+}
 
-	const index = exclude.findIndex(item => {
-		return path.startsWith(item);
-	});
+if (path.startsWith('/public')) {
 
-	console.log('[Security] Exclude index:', index, 'for path:', path);
+const userPublicToken = await c.env.kv.get(KvConst.PUBLIC_KEY);
+const publicToken = c.req.header(constant.TOKEN_HEADER);
+if (publicToken !== userPublicToken) {
+throw new BizError(t('publicTokenFail'), 401);
+}
+return await next();
+}
 
-	if (index > -1) {
-		console.log('[Security] Path excluded, passing through');
-		return await next();
-	}
+// User API Token auth paths (custom)
+const userApiPaths = ['/user/account/', '/user/email/', '/user/api/'];
+const isUserApiPath = userApiPaths.some(apiPath => path.startsWith(apiPath));
 
-	if (path.startsWith('/public')) {
+if (isUserApiPath) {
+const apiToken = c.req.header(constant.TOKEN_HEADER);
 
-		const userPublicToken = await c.env.kv.get(KvConst.PUBLIC_KEY);
-		const publicToken = c.req.header(constant.TOKEN_HEADER);
-		if (publicToken !== userPublicToken) {
-			throw new BizError(t('publicTokenFail'), 401);
-		}
-		return await next();
-	}
+if (!apiToken) {
+throw new BizError(t('authExpired'), 401);
+}
 
-	// 检查是否是用户API Token认证的路径
-	const userApiPaths = ['/user/account/', '/user/email/', '/user/api/'];
-	const isUserApiPath = userApiPaths.some(apiPath => path.startsWith(apiPath));
+const tokenData = await apiTokenService.verifyToken(c, apiToken);
 
-	if (isUserApiPath) {
-		const apiToken = c.req.header(constant.TOKEN_HEADER);
+if (!tokenData) {
+throw new BizError(t('authExpired'), 401);
+}
 
-		if (!apiToken) {
-			throw new BizError(t('authExpired'), 401);
-		}
+const userRow = await userService.selectById(c, tokenData.userId);
 
-		const tokenData = await apiTokenService.verifyToken(c, apiToken);
+if (!userRow) {
+throw new BizError(t('authExpired'), 401);
+}
 
-		if (!tokenData) {
-			throw new BizError(t('authExpired'), 401);
-		}
+c.set('user', userRow);
+c.set('isApiToken', true);
 
-		// 获取用户完整信息
-		const userRow = await userService.selectById(c, tokenData.userId);
+return await next();
+}
 
-		if (!userRow) {
-			throw new BizError(t('authExpired'), 401);
-		}
+// Delete APIs may use Public Token (custom)
+const deleteApiPaths = ['/user/delete', '/user/admin/delete', '/user/admin/batchDelete'];
+const isDeleteApi = deleteApiPaths.some(apiPath => path.startsWith(apiPath));
 
-		// 设置用户上下文
-		c.set('user', userRow);
-		c.set('isApiToken', true); // 标记这是API Token认证
+if (isDeleteApi) {
+const userPublicToken = await c.env.kv.get(KvConst.PUBLIC_KEY);
+const publicToken = c.req.header(constant.TOKEN_HEADER);
 
-		return await next();
-	}
+if (publicToken && publicToken === userPublicToken) {
+return await next();
+}
+}
 
-	// 检查删除API是否使用Public Token认证
-	const deleteApiPaths = ['/user/delete', '/user/admin/delete', '/user/admin/batchDelete'];
-	const isDeleteApi = deleteApiPaths.some(apiPath => path.startsWith(apiPath));
+const jwt = c.req.header(constant.TOKEN_HEADER);
 
-	if (isDeleteApi) {
-		const userPublicToken = await c.env.kv.get(KvConst.PUBLIC_KEY);
-		const publicToken = c.req.header(constant.TOKEN_HEADER);
+const result = await jwtUtils.verifyToken(c, jwt);
 
-		// 如果提供了有效的Public Token，直接通过
-		if (publicToken && publicToken === userPublicToken) {
-			return await next();
-		}
-		// 如果没有Public Token或无效，继续使用JWT认证流程
-	}
+if (!result) {
+throw new BizError(t('authExpired'), 401);
+}
 
-	const jwt = c.req.header(constant.TOKEN_HEADER);
+const { userId, token } = result;
+const authInfo = await c.env.kv.get(KvConst.AUTH_INFO + userId, { type: 'json' });
 
-	const result = await jwtUtils.verifyToken(c, jwt);
+if (!authInfo) {
+throw new BizError(t('authExpired'), 401);
+}
 
-	if (!result) {
-		throw new BizError(t('authExpired'), 401);
-	}
+if (!authInfo.tokens.includes(token)) {
+throw new BizError(t('authExpired'), 401);
+}
 
-	const { userId, token } = result;
-	const authInfo = await c.env.kv.get(KvConst.AUTH_INFO + userId, { type: 'json' });
+const permIndex = requirePerms.findIndex(item => {
+return path.startsWith(item);
+});
 
-	if (!authInfo) {
-		throw new BizError(t('authExpired'), 401);
-	}
+if (permIndex > -1) {
 
-	if (!authInfo.tokens.includes(token)) {
-		throw new BizError(t('authExpired'), 401);
-	}
+const permKeys = await permService.userPermKeys(c, authInfo.user.userId);
 
-	const permIndex = requirePerms.findIndex(item => {
-		return path.startsWith(item);
-	});
+const userPaths = permKeyToPaths(permKeys);
 
-	if (permIndex > -1) {
+const userPermIndex = userPaths.findIndex(item => {
+return path.startsWith(item);
+});
 
-		const permKeys = await permService.userPermKeys(c, authInfo.user.userId);
+// multi-admin support (custom)
+if (userPermIndex === -1 && !adminUtils.isAdmin(c, authInfo.user.email)) {
+throw new BizError(t('unauthorized'), 403);
+}
 
-		const userPaths = permKeyToPaths(permKeys);
+}
 
-		const userPermIndex = userPaths.findIndex(item => {
-			return path.startsWith(item);
-		});
+const refreshTime = dayjs(authInfo.refreshTime).startOf('day');
+const nowTime = dayjs().startOf('day')
 
-		if (userPermIndex === -1 && !adminUtils.isAdmin(c, authInfo.user.email)) {
-			throw new BizError(t('unauthorized'), 403);
-		}
+if (!nowTime.isSame(refreshTime)) {
+authInfo.refreshTime = dayjs().toISOString();
+await userService.updateUserInfo(c, authInfo.user.userId);
+await c.env.kv.put(KvConst.AUTH_INFO + userId, JSON.stringify(authInfo), { expirationTtl: constant.TOKEN_EXPIRE });
+}
 
-	}
+c.set('user',authInfo.user)
 
-	const refreshTime = dayjs(authInfo.refreshTime).startOf('day');
-	const nowTime = dayjs().startOf('day')
-
-	if (!nowTime.isSame(refreshTime)) {
-		authInfo.refreshTime = dayjs().toISOString();
-		await userService.updateUserInfo(c, authInfo.user.userId);
-		await c.env.kv.put(KvConst.AUTH_INFO + userId, JSON.stringify(authInfo), { expirationTtl: constant.TOKEN_EXPIRE });
-	}
-
-	c.set('user',authInfo.user)
-
-	return await next();
+return await next();
 });
 
 function permKeyToPaths(permKeys) {
-	const paths = [];
-	for (const key of permKeys) {
-		const routeList = premKey[key];
-		if (routeList && Array.isArray(routeList)) {
-			paths.push(...routeList);
-		}
-	}
-	return paths;
+const paths = [];
+for (const key of permKeys) {
+const routeList = premKey[key];
+if (routeList && Array.isArray(routeList)) {
+paths.push(...routeList);
 }
-
+}
+return paths;
+}

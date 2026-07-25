@@ -29,3 +29,11 @@ app.post('/email/send', async (c) => {
 	return c.json(result.ok(email));
 });
 
+
+app.put('/email/read', async (c) => {
+const userId = c.get('user').userId;
+const emailService = (await import('../service/email-service.js')).default;
+const result = (await import('../model/result.js')).default;
+await emailService.read(c, await c.req.json(), userId);
+return c.json(result.ok());
+});

@@ -7,6 +7,15 @@ on:
       - "mail-worker/**"
       - "mail-vue/**"
   workflow_dispatch:
+    inputs:
+      run_init:
+        description: "部署后运行数据库初始化/迁移。生产环境请先备份 D1。"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 jobs:
   Deploy-cloud-mail:
@@ -23,6 +32,9 @@ jobs:
       ADMIN: ${{ secrets.ADMIN }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       INIT_URL: ${{ secrets.INIT_URL }}
+      LINUXDO_CLIENT_ID: ${{ secrets.LINUXDO_CLIENT_ID }}
+      LINUXDO_CLIENT_SECRET: ${{ secrets.LINUXDO_CLIENT_SECRET }}
+      LINUXDO_CALLBACK_URL: ${{ secrets.LINUXDO_CALLBACK_URL }}
     
     outputs:
       deployment_skipped: ${{ steps.deploy.outputs.deployment_skipped }}
@@ -77,26 +89,34 @@ jobs:
 
           echo "🔒 Setting Worker secrets..."
           WORKER_NAME="cloud-mail"
-          for VAR in DOMAIN ADMIN JWT_SECRET; do
+          for VAR in DOMAIN ADMIN JWT_SECRET LINUXDO_CLIENT_ID LINUXDO_CLIENT_SECRET LINUXDO_CALLBACK_URL; do
             if [ -n "${!VAR}" ]; then
               VAR_LOWER=$(echo "$VAR" | tr '[:upper:]' '[:lower:]')
               echo ">> Processing secret: '$VAR_LOWER'"
-              (echo "${!VAR}" | npx wrangler secret put "$VAR_LOWER" --name "$WORKER_NAME" -c "$CONFIG_FILE") || true
+              echo "${!VAR}" | npx wrangler secret put "$VAR_LOWER" --name "$WORKER_NAME" -c "$CONFIG_FILE"
             else
               echo "⚠️ Warning: GitHub Secret '$VAR' is not set. Skipping."
             fi
           done
 
           echo "🚀 Configuration updated. Starting deployment..."
-          npx wrangler deploy -c "$CONFIG_FILE" | grep -v "https://.*\.workers\.dev" || true
+          set +e
+          npx wrangler deploy -c "$CONFIG_FILE" 2>&1 | grep -v "https://.*\.workers\.dev"
+          DEPLOY_EXIT=${PIPESTATUS[0]}
+          set -e
+          if [ "$DEPLOY_EXIT" -ne 0 ]; then
+            echo "❌ Deployment failed with exit code $DEPLOY_EXIT."
+            exit "$DEPLOY_EXIT"
+          fi
           echo "✅ Deployment command executed."
 
-      - name: 🗄️ Initialize Database (if INIT_URL is set)
-        if: ${{ steps.deploy.outputs.deployment_skipped == 'false' }}
+
+      - name: 🗄️ Initialize Database (manual dispatch only)
+        if: ${{ steps.deploy.outputs.deployment_skipped == 'false' && github.event_name == 'workflow_dispatch' && inputs.run_init == 'true' }}
         run: |
           if [ -z "$INIT_URL" ]; then
-            echo "✅ Deployment successful. INIT_URL not set, skipping initialization."
-            exit 0
+            echo "❌ run_init=true but INIT_URL is not set. Please set INIT_URL after backing up D1."
+            exit 1
           fi
           
           echo "⏳ Waiting 15 秒之前 before checking initialization status..."
@@ -109,11 +129,14 @@ jobs:
 
           if [ "$HTTP_CODE" = "200" ] && [ "$RESPONSE_BODY" = "初始化成功" ]; then
             echo "🎉✅ Fresh initialization successful!"
-          elif [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ Database is already initialized or in a stable state. Response: $RESPONSE_BODY"
           else
-            echo "⚠️ Database initialization check failed with HTTP status: $HTTP_CODE. Please check your worker logs."
+            echo "❌ Database initialization failed with HTTP status: $HTTP_CODE. Response: $RESPONSE_BODY"
+            exit 1
           fi
+
+      - name: 🗄️ Skip Database Initialization
+        if: ${{ steps.deploy.outputs.deployment_skipped == 'false' && (github.event_name != 'workflow_dispatch' || inputs.run_init != 'true') }}
+        run: echo "✅ Deployment completed without running database initialization. Run workflow manually with run_init=true after backing up D1 if schema migration is needed."
 
       - name: 📣 Notify Final Status
         if: always()

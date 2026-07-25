@@ -107,7 +107,7 @@ import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
 import http from '@/axios/index.js';
 
-const { t } = useI18n()
+const {t, locale} = useI18n()
 const accountStore = useAccountStore()
 const userStore = useUserStore();
 const setPwdLoading = ref(false)
@@ -250,6 +250,12 @@ function submitPwd() {
 
 }
 
+const langSelect = ref(localStorage.getItem('lang') || 'zh')
+function changeLang(lang) {
+  langSelect.value = lang
+  try { locale.value = lang } catch(e) {}
+  localStorage.setItem('lang', lang)
+}
 </script>
 <style scoped lang="scss">
 .box {

@@ -193,6 +193,30 @@
                   </el-button>
                 </div>
               </div>
+              <div class="setting-item">
+                <div><span>{{ $t('blackList') }}</span></div>
+                <div>
+                  <el-button class="opt-button" style="margin-top: 0" @click="openBlackListForm" size="small"
+                             type="primary">
+                    <Icon icon="fluent:settings-48-regular" width="16" height="16"/>
+                  </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('codeRecognition') }}</span></div>
+                <div>
+                  <el-switch @change="changeField('aiCode', $event)" :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                             v-model="setting.aiCode"/>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('codeRecognitionRules') }}</span></div>
+                <div>
+                  <el-button class="opt-button" size="small" type="primary" @click="openAiCodeFilter">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -590,6 +614,45 @@
           </el-table-column>
         </el-table>
       </el-dialog>
+      <el-dialog v-model="blackFormShow" class="forward-dialog" @closed="resetBlackList">
+        <template #header>
+          <div class="forward-head">
+            <span class="forward-set-title">{{ $t('blackList') }}</span>
+            <el-tooltip effect="dark" :content="$t('blackListDesc')">
+              <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+            </el-tooltip>
+          </div>
+        </template>
+        <el-form>
+          <el-form-item :label="t('blackFromDesc')" label-position="top">
+            <el-input-tag v-model="blackListForm.blackFrom" @add-tag="banEmailAddTag" />
+          </el-form-item>
+          <el-form-item :label="t('blackSubjectDesc')" label-position="top">
+            <el-input-tag v-model="blackListForm.blackSubject"/>
+          </el-form-item>
+          <el-form-item :label="t('blackContentDesc')" label-position="top">
+            <el-input-tag v-model="blackListForm.blackContent"/>
+          </el-form-item>
+        </el-form>
+        <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveBlackList">{{ $t('save') }}</el-button>
+      </el-dialog>
+      <el-dialog v-model="aiCodeFilterShow" class="forward-dialog" @closed="resetAiCodeFilter">
+        <template #header>
+          <div class="forward-head">
+            <span class="forward-set-title">{{ $t('codeRecognitionRules') }}</span>
+            <el-tooltip effect="dark" :content="$t('codeRecognitionRulesDesc')">
+              <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+            </el-tooltip>
+          </div>
+        </template>
+        <el-form>
+          <el-form-item :label="t('senderRules')" label-position="top">
+            <el-input-tag v-model="aiCodeFilter" @add-tag="aiCodeFilterAddTag"/>
+          </el-form-item>
+        </el-form>
+        <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveAiCodeFilter">{{ $t('save') }}</el-button>
+      </el-dialog>
+
       <el-dialog v-model="regVerifyCountShow" :title="$t('rulesVerifyTitle',{count: regVerifyCount})"
                  @closed="regVerifyCount = setting.regVerifyCount">
         <form>
@@ -707,7 +770,7 @@ import {Icon} from "@iconify/vue";
 import {cvtR2Url} from "@/utils/convert.js";
 import {storeToRefs} from "pinia";
 import {debounce} from 'lodash-es'
-import {isEmail} from "@/utils/verify-utils.js";
+import {isEmail, isDomain} from "@/utils/verify-utils.js";
 import loading from "@/components/loading/index.vue";
 import {getTextWidth} from "@/utils/text.js";
 import {fileToBase64} from "@/utils/file-utils.js"
@@ -730,6 +793,10 @@ const userStore = useUserStore();
 const editTitleShow = ref(false)
 const resendTokenFormShow = ref(false)
 const smtp2goTokenFormShow = ref(false)
+const blackFormShow = ref(false)
+const aiCodeFilterShow = ref(false)
+const blackListForm = ref({ blackSubject: [], blackContent: [], blackFrom: [] })
+const aiCodeFilter = ref([])
 const r2DomainShow = ref(false)
 const turnstileShow = ref(false)
 const tgSettingShow = ref(false)
@@ -1218,6 +1285,63 @@ function saveResendToken() {
   const domain = resendTokenForm.domain.slice(1)
   settingForm.resendTokens[domain] = resendTokenForm.token
   editSetting(settingForm)
+}
+
+
+function openBlackListForm() {
+  blackFormShow.value = true
+}
+function openAiCodeFilter() {
+  aiCodeFilterShow.value = true
+}
+function resetBlackList() {
+  blackListForm.value.blackFrom = setting.value.blackFrom ? setting.value.blackFrom.split(',').filter(Boolean) : []
+  blackListForm.value.blackContent = setting.value.blackContent ? setting.value.blackContent.split(',').filter(Boolean) : []
+  blackListForm.value.blackSubject = setting.value.blackSubject ? setting.value.blackSubject.split(',').filter(Boolean) : []
+}
+function resetAiCodeFilter() {
+  aiCodeFilter.value = setting.value.aiCodeFilter ? setting.value.aiCodeFilter.split(',').filter(Boolean) : []
+}
+function saveBlackList() {
+  const form = {
+    blackContent: blackListForm.value.blackContent + '',
+    blackSubject: blackListForm.value.blackSubject + '',
+    blackFrom: blackListForm.value.blackFrom + ''
+  }
+  settingLoading.value = true
+  editSetting(form, true).then(() => {
+    blackFormShow.value = false
+  }).finally(() => {
+    settingLoading.value = false
+  })
+}
+function saveAiCodeFilter() {
+  editSetting({ aiCodeFilter: aiCodeFilter.value + '' }, true).then(() => {
+    aiCodeFilterShow.value = false
+  })
+}
+function banEmailAddTag(val) {
+  const emails = Array.from(new Set(val.split(/[,，]/).map(item => item.trim()).filter(Boolean)));
+  blackListForm.value.blackFrom.splice(blackListForm.value.blackFrom.length - 1, 1)
+  emails.forEach(email => {
+    if ((isEmail(email) || isDomain(email)) && !blackListForm.value.blackFrom.includes(email)) {
+      blackListForm.value.blackFrom.push(email)
+    }
+  })
+}
+function aiCodeFilterAddTag(val) {
+  const emails = Array.from(new Set(val.split(/[,，]/).map(item => item.trim()).filter(Boolean)));
+  aiCodeFilter.value.splice(aiCodeFilter.value.length - 1, 1)
+  emails.forEach(email => {
+    if ((isEmail(email) || isDomain(email)) && !aiCodeFilter.value.includes(email)) {
+      aiCodeFilter.value.push(email)
+    }
+  })
+}
+function changeField(field, value) {
+  const form = {}
+  form[field] = value
+  editSetting(form)
 }
 
 function openSmtp2goForm() {

@@ -44,6 +44,9 @@
           <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
           >{{ $t('loginBtn') }}
           </el-button>
+          <el-button class="btn" v-if="settingStore.settings && settingStore.settings.linuxdoSwitch" style="margin-top: 10px; width: 100%" @click="linuxDoLogin">
+            <el-avatar src="/image/linuxdo.webp" :size="18" style="margin-right: 10px" />LinuxDo
+          </el-button>
         </div>
         <div v-show="show !== 'login'">
           <el-input class="email-input" v-model="registerForm.email" type="text" :placeholder="$t('emailAccount')"
@@ -104,6 +107,8 @@
 </template>
 
 <script setup>
+import {oauthBindUser, oauthLinuxDoLogin} from "@/request/ouath.js";
+
 import router from "@/router";
 import {computed, nextTick, reactive, ref} from "vue";
 import {login} from "@/request/login.js";
@@ -229,20 +234,24 @@ const submit = () => {
   }
 
   loginLoading.value = true
-  login(email, form.password).then(async data => {
-    localStorage.setItem('token', data.token)
-    const user = await loginUserInfo();
-    accountStore.currentAccountId = user.accountId;
-    userStore.user = user;
-    const routers = permsToRouter(user.permKeys);
-    routers.forEach(routerData => {
-      router.addRoute('layout', routerData);
-    });
-    await router.replace({name: 'layout'})
-    uiStore.showNotice()
+	login(email, form.password).then(async data => {
+		await handleLoginSuccess(data.token)
   }).finally(() => {
     loginLoading.value = false
   })
+}
+
+async function handleLoginSuccess(token) {
+	localStorage.setItem('token', token)
+	const user = await loginUserInfo();
+	accountStore.currentAccountId = user.accountId;
+	userStore.user = user;
+	const routers = permsToRouter(user.permKeys);
+	routers.forEach(routerData => {
+		router.addRoute('layout', routerData);
+	});
+	await router.replace({name: 'layout'})
+	uiStore.showNotice()
 }
 
 
@@ -320,7 +329,7 @@ function submitRegister() {
             console.log('人机验证js加载失败')
           }
         } else {
-          window.turnstile.reset('.register-turnstile')
+          window.turnstile.reset(turnstileId)
         }
       })
     } else if (!botJsError.value) {
@@ -376,6 +385,46 @@ function submitRegister() {
     }
   });
 }
+
+
+const oauthLoading = ref(false)
+const bindForm = reactive({ oauthUserId: '', bindToken: '', email: '', code: '', show: false })
+function linuxDoLogin() {
+  const clientId = settingStore.settings.linuxdoClientId
+  const redirectUri = encodeURIComponent(settingStore.settings.linuxdoCallbackUrl)
+  window.location.href = `https://connect.linux.do/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email`
+}
+async function linuxDoGetUser() {
+  const url = new URL(window.location.href)
+  const code = url.searchParams.get('code')
+  if (!code) return
+  oauthLoading.value = true
+  try {
+    const data = await oauthLinuxDoLogin(code)
+    if (data.token) {
+			await handleLoginSuccess(data.token)
+    } else {
+      bindForm.oauthUserId = data.userInfo.oauthUserId
+			bindForm.bindToken = data.bindToken
+      bindForm.show = true
+    }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    oauthLoading.value = false
+    // clean code from url
+    url.searchParams.delete('code')
+    window.history.replaceState({}, '', url.pathname + url.search)
+  }
+}
+function confirmBindOauth() {
+	oauthBindUser({ email: bindForm.email, oauthUserId: bindForm.oauthUserId, bindToken: bindForm.bindToken, code: bindForm.code }).then(async data => {
+    if (data.token) {
+			await handleLoginSuccess(data.token)
+    }
+  })
+}
+linuxDoGetUser()
 
 </script>
 

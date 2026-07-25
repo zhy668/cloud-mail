@@ -85,10 +85,13 @@
                 </div>
                 <div>
                   <div class="email-text">
-                    <span class="email-subject">
-                      <slot name="subject" :email="item">
-                        {{ item.subject || '\u200B' }}
-                      </slot>
+                    <span :class="['email-subject', item.unread === 0 ? 'is-unread' : '']">
+                      <span v-if="item.code" class="code-tag" @click.stop="copyCode(item.code)">[{{ t('codeLabel') }}{{ item.code }}]</span>
+                      <span class="subject-text">
+                        <slot name="subject" :email="item">
+                          {{ item.subject || '\u200B' }}
+                        </slot>
+                      </span>
                     </span>
                     <span class="email-content">{{ htmlToText(item) || '\u200B' }}</span>
                   </div>
@@ -170,6 +173,7 @@ import {useSettingStore} from "@/store/setting.js";
 import {sleep} from "@/utils/time-utils.js"
 import {fromNow} from "@/utils/day.js";
 import {useI18n} from "vue-i18n";
+import {ElMessage} from "element-plus";
 
 const props = defineProps({
   getEmailList: Function,
@@ -462,6 +466,15 @@ function updateCheckStatus() {
   isIndeterminate.value = checkedCount > 0 && checkedCount < emailList.length;
 }
 
+async function copyCode(code) {
+  try {
+    await navigator.clipboard.writeText(code);
+    ElMessage({ message: t('copySuccessMsg'), type: 'success', plain: true });
+  } catch (e) {
+    ElMessage({ message: code, type: 'success', plain: true });
+  }
+}
+
 function jumpDetails(email) {
   emit('jump', email)
 }
@@ -514,13 +527,14 @@ function getEmailList(refresh = false) {
 
     if (refresh) scrollbarRef.value?.setScrollTop(0);
 
-    noLoading.value = data.list.length < queryParam.size;
-    followLoading.value = data.list.length >= queryParam.size;
+		noLoading.value = data.list.length < queryParam.size;
+		followLoading.value = false;
 
     total.value = data.total;
     queryParam.emailId = data.list.length > 0 ? data.list.at(-1).emailId : 0
   }).finally(() => {
     loading.value = false
+		followLoading.value = false
     reqLock = false
   })
 }
@@ -782,6 +796,28 @@ function loadData() {
         grid-template-columns: 1fr;
       }
 
+      .code-tag {
+        flex: 0 0 auto;
+        max-width: 170px;
+        height: 20px;
+        line-height: 20px;
+        font-size: 12px;
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+        border-radius: 4px;
+        padding: 0 6px;
+        margin-right: 6px;
+        cursor: pointer;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .subject-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .is-unread { font-weight: 700; }
       .email-subject {
         overflow: hidden;
         white-space: nowrap;

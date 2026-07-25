@@ -177,7 +177,9 @@ if (hasPerm('account:query')) {
 }
 
 watch(() => accountStore.changeUserAccountName, () => {
-  accounts[0].name = accountStore.changeUserAccountName
+	if (accounts[0]) {
+		accounts[0].name = accountStore.changeUserAccountName
+	}
 })
 
 
@@ -271,7 +273,17 @@ function remove(account) {
   }).then(() => {
     accountDelete(account.accountId).then(() => {
       const index = accounts.findIndex(item => item.accountId === account.accountId);
-      accounts.splice(index, 1);
+			if (index > -1) {
+				accounts.splice(index, 1);
+			}
+			if (accountStore.currentAccountId === account.accountId) {
+				if (accounts[0]) {
+					changeAccount(accounts[0])
+				} else {
+					accountStore.currentAccountId = 0
+					accountStore.currentAccount = {}
+				}
+			}
       if (accounts.length < queryParams.size) {
         getAccountList()
       }
@@ -340,7 +352,7 @@ function getAccountList() {
 
   let start = Date.now();
 
-  accountList(queryParams.accountId, queryParams.size).then(async list => {
+	accountList(queryParams.accountId, queryParams.size).then(async list => {
 
     let end = Date.now();
     let duration = end - start;
@@ -349,21 +361,28 @@ function getAccountList() {
 
     }
 
+		if (list.length === 0) {
+			noLoading.value = true
+			return
+		}
+
+		const isFirstPage = accounts.length === 0
+
     if (list.length < queryParams.size) {
       noLoading.value = true
-    }
-    if (accounts.length === 0) {
-      accountStore.currentAccount = list[0].accountId
     }
     queryParams.accountId = list.at(-1).accountId
     accounts.push(...list)
 
-    loading.value = false
-    followLoading.value = false
-    first = false
+		if (isFirstPage) {
+			const currentAccount = accounts.find(item => item.accountId === accountStore.currentAccountId) || accounts[0]
+			changeAccount(currentAccount)
+		}
   }).catch(() => {
+	}).finally(() => {
     loading.value = false
     followLoading.value = false
+		first = false
   })
 }
 
@@ -400,7 +419,7 @@ function submit() {
             console.log('人机验证js加载失败')
           }
         } else {
-          window.turnstile.reset('.add-email-turnstile')
+          window.turnstile.reset(turnstileId)
         }
       })
     } else if (!botJsError.value) {
@@ -419,6 +438,9 @@ function submit() {
     showAdd.value = false
     addForm.email = ''
     accounts.push(account)
+		if (!accountStore.currentAccountId) {
+			changeAccount(account)
+		}
     verifyToken = ''
     settingStore.settings.addVerifyOpen = account.addVerifyOpen
     ElMessage({
