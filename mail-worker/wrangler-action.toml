@@ -8,7 +8,7 @@ enabled = true
 
 [[d1_databases]]
 binding = "db"
-database_name = "cloud-mail" # 数据库的名称
+database_name = "email" # 数据库的名称
 database_id = "${D1_DATABASE_ID}" # 使用占位符引用环境变量
 
 [[kv_namespaces]]
@@ -17,7 +17,7 @@ id = "${KV_NAMESPACE_ID}" # 使用占位符引用环境变量
 
 [[r2_buckets]]
 binding = "r2"
-bucket_name = "${R2_BUCKET_NAME}" # 使用占位符引用环境变量
+bucket_name = "email"
 
 [assets]
 binding = "assets"		#静态资源绑定名默认不可修改
@@ -36,4 +36,4 @@ crons = ["0 16 * * *"]	#定时任务每天晚上12点执行
 #jwt_secret = ""			#jwt令牌的密钥,随便填一串字符串
 
 [build]
-command = "pnpm --prefix ../mail-vue install --frozen-lockfile && pnpm --prefix ../mail-vue run build"
+command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"

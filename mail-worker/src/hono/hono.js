@@ -3,8 +3,36 @@ const app = new Hono();
 
 import result from '../model/result';
 import { cors } from 'hono/cors';
+import initService from '../init/init';
+
+let schemaEnsured = false;
+let schemaEnsurePromise = null;
+
+async function ensureSchema(c) {
+	if (schemaEnsured || !c.env?.db) {
+		return;
+	}
+
+	if (!schemaEnsurePromise) {
+		schemaEnsurePromise = initService.ensureCurrentSchema(c)
+			.then(() => {
+				schemaEnsured = true;
+			})
+			.catch((e) => {
+				schemaEnsurePromise = null;
+				console.warn(`自动检查数据库结构失败：${e.message}`);
+			});
+	}
+
+	await schemaEnsurePromise;
+}
 
 app.use('*', cors());
+
+app.use('*', async (c, next) => {
+	await ensureSchema(c);
+	await next();
+});
 
 // Custom logging middleware with timezone support
 app.use('*', async (c, next) => {

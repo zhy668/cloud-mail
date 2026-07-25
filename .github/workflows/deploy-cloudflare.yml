@@ -27,7 +27,6 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
       KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID }}
-      R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
       DOMAIN: ${{ secrets.DOMAIN }}
       ADMIN: ${{ secrets.ADMIN }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -67,8 +66,8 @@ jobs:
         id: deploy
         working-directory: ./mail-worker
         run: |
-          if [ -z "$D1_DATABASE_ID" ] || [ -z "$KV_NAMESPACE_ID" ] || [ -z "$R2_BUCKET_NAME" ]; then
-            echo "⚠️ Required secrets (D1_DATABASE_ID, KV_NAMESPACE_ID, or R2_BUCKET_NAME) are not set."
+          if [ -z "$D1_DATABASE_ID" ] || [ -z "$KV_NAMESPACE_ID" ]; then
+            echo "⚠️ Required secrets (D1_DATABASE_ID or KV_NAMESPACE_ID) are not set."
             echo "🟡 Skipping deployment."
             echo "deployment_skipped=true" >> $GITHUB_OUTPUT
             exit 0
@@ -80,10 +79,8 @@ jobs:
 
           sed -i "s|\${D1_DATABASE_ID}|${D1_DATABASE_ID}|g" "$CONFIG_FILE"
           sed -i "s|\${KV_NAMESPACE_ID}|${KV_NAMESPACE_ID}|g" "$CONFIG_FILE"
-          sed -i "s|\${R2_BUCKET_NAME}|${R2_BUCKET_NAME}|g" "$CONFIG_FILE"
 
           echo "🔍 Debug: Checking configuration after replacement..."
-          echo "R2_BUCKET_NAME value: '$R2_BUCKET_NAME'"
           echo "R2 bucket configuration in $CONFIG_FILE:"
           grep -A 2 -B 2 "bucket_name" "$CONFIG_FILE" || true
 

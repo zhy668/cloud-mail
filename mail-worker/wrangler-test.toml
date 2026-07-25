@@ -9,11 +9,9 @@ enabled = true
 [[d1_databases]]
 binding = "db"			#d1数据库绑定名默认不可修改
 database_name = "test-email"		#d1数据库名字
-database_id = "e65f099d-796d-4eaa-8dff-529b368b20db"		#d1数据库id
 
 [[kv_namespaces]]
 binding = "kv"			#kv绑定名默认不可修改
-id = "9be10cd058e04c55b526f8c0c116f50c"					#kv数据库id
 
 #(可选)
 #[[r2_buckets]]

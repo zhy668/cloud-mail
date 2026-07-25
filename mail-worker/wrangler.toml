@@ -6,18 +6,16 @@ keep_vars = true
 [observability]
 enabled = true
 
-#[[d1_databases]]
-#binding = "db"
-#database_name = ""
-#database_id = ""
+[[d1_databases]]
+binding = "db"
+database_name = "email"
 
-#[[kv_namespaces]]
-#binding = "kv"
-#id = ""
+[[kv_namespaces]]
+binding = "kv"
 
-#[[r2_buckets]]
-#binding = "r2"
-#bucket_name = ""
+[[r2_buckets]]
+binding = "r2"
+bucket_name = "email"
 
 #[[send_email]]
 #name = "email"
@@ -47,4 +45,4 @@ crons = ["0 16 * * *"]
 #linuxdo_callback_url = ""
 
 [build]
-command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"
+command = "npm --prefix ../mail-vue run build"
